@@ -360,15 +360,36 @@ func (c *Client) locationCallback(ck *cookie.Cookie) error {
 }
 
 func (c *Client) loginCallback(ck *cookie.Cookie, srv server.Server) error {
-	url, err := server.OAuthURL(srv, c.Name)
+	// get a custom redirect
+	cr := CustomRedirect(c.Name)
+	url, err := server.OAuthURL(srv, c.Name, cr)
 	if err != nil {
 		return err
 	}
-	err = c.FSM.GoTransitionRequired(StateOAuthStarted, url)
-	if err != nil {
-		return err
+	authCodeURI := ""
+	if cr != "" {
+		errChan := make(chan error)
+		go func() {
+			err := c.FSM.GoTransitionRequired(StateOAuthStarted, &srvtypes.RequiredAskTransition{
+				C:    ck,
+				Data: url,
+			})
+			if err != nil {
+				errChan <- err
+			}
+		}()
+		g, err := ck.Receive(errChan)
+		if err != nil {
+			return err
+		}
+		authCodeURI = g
+	} else {
+		err = c.FSM.GoTransitionRequired(StateOAuthStarted, url)
+		if err != nil {
+			return err
+		}
 	}
-	err = server.OAuthExchange(ck.Context(), srv)
+	err = server.OAuthExchange(ck.Context(), srv, authCodeURI)
 	if err != nil {
 		return err
 	}
@@ -841,7 +862,7 @@ func (c *Client) Cleanup(ck *cookie.Cookie) (err error) {
 	// If we get a canceled error, return that, otherwise just log the error
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return i18nerr.Wrap(err, "Cleanup was canceled")
+			return i18nerr.Wrap(err, "The cleanup process was canceled")
 		}
 
 		log.Logger.Warningf("failed to refresh server endpoints: %v", err)
@@ -902,7 +923,7 @@ func (c *Client) RenewSession(ck *cookie.Cookie) (err error) {
 	// If we get a canceled error, return that, otherwise just log the error
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return i18nerr.Wrap(err, "Renewing was canceled")
+			return i18nerr.Wrap(err, "The renewing process was canceled")
 		}
 
 		log.Logger.Warningf("failed to refresh server endpoints: %v", err)

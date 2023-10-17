@@ -110,6 +110,9 @@ type exchangeSession struct {
 	// Verifier is the preimage of the challenge
 	Verifier string
 
+	// RedirectURI is the passed redirect URI
+	RedirectURI string
+
 	// Listener is the listener where the servers 'listens' on
 	Listener net.Listener
 
@@ -132,14 +135,13 @@ func (oauth *OAuth) AccessToken(ctx context.Context) (string, error) {
 // If it was unsuccessful it returns an error.
 // @see https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-07.html#section-8.4.2
 // "Loopback Interface Redirection".
-func (oauth *OAuth) setupListener() error {
+func (oauth *OAuth) setupListener() (net.Listener, error) {
 	// create a listener
 	lst, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return errors.WrapPrefix(err, "net.Listen failed", 0)
+		return nil, errors.WrapPrefix(err, "net.Listen failed", 0)
 	}
-	oauth.session.Listener = lst
-	return nil
+	return lst, nil
 }
 
 // tokensWithCallback gets the OAuth tokens using a local web server
@@ -228,17 +230,12 @@ func (oauth *OAuth) tokensWithAuthCode(ctx context.Context, authCode string) err
 	// so that the server can verify that we are the actual owner of the authorization code
 	u := oauth.TokenURL
 
-	port, err := oauth.ListenerPort()
-	if err != nil {
-		return err
-	}
-
 	data := url.Values{
 		"client_id":     {oauth.ClientID},
 		"code":          {authCode},
 		"code_verifier": {oauth.session.Verifier},
 		"grant_type":    {"authorization_code"},
-		"redirect_uri":  {fmt.Sprintf("http://127.0.0.1:%d/callback", port)},
+		"redirect_uri":  {oauth.session.RedirectURI},
 	}
 	h := http.Header{
 		"content-type": {"application/x-www-form-urlencoded"},
@@ -369,11 +366,12 @@ func writeResponseHTML(w http.ResponseWriter, title string, message string) erro
 func (s *exchangeSession) Authcode(url *url.URL) (string, error) {
 	// ISS: https://www.rfc-editor.org/rfc/rfc9207.html
 	q := url.Query()
+
+	// first check ISS
 	iss := q.Get("iss")
 	if s.ISS != iss {
 		return "", errors.Errorf("failed matching ISS; expected '%s' got '%s'", s.ISS, iss)
 	}
-
 	// Make sure the state is present and matches to protect against cross-site request forgeries
 	// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-04#section-7.15
 	state := q.Get("state")
@@ -383,6 +381,16 @@ func (s *exchangeSession) Authcode(url *url.URL) (string, error) {
 	// The state is the first entry
 	if state != s.State {
 		return "", errors.Errorf("failed matching state; expected '%s' got '%s'", s.State, state)
+	}
+
+	// check if an error is present
+	// https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-09#name-authorization-response (error response)
+	errc := q.Get("error")
+	if errc != "" {
+		// these are optional but let's include them
+		errdesc := q.Get("error_description")
+		erruri := q.Get("error_uri")
+		return "", errors.Errorf("failed obtaining oauthorization code, error code '%s', error description '%s', error uri '%s'", errc, errdesc, erruri)
 	}
 
 	// No authorization code
@@ -436,17 +444,8 @@ func (oauth *OAuth) Init(clientID string, iss string, baseAuthorizationURL strin
 	oauth.TokenURL = tokenURL
 }
 
-// ListenerPort gets the listener for the OAuth web server
-// It returns the port as an integer and an error if there is any.
-func (oauth *OAuth) ListenerPort() (int, error) {
-	if oauth.session.Listener == nil {
-		return 0, errors.New("failed to get listener port")
-	}
-	return oauth.session.Listener.Addr().(*net.TCPAddr).Port, nil
-}
-
 // AuthURL gets the authorization url to start the OAuth procedure.
-func (oauth *OAuth) AuthURL(name string, postProcessAuth func(string) string) (string, error) {
+func (oauth *OAuth) AuthURL(name string, postProcessAuth func(string) string, cr string) (string, error) {
 	// Update the client ID
 	oauth.ClientID = name
 
@@ -466,22 +465,27 @@ func (oauth *OAuth) AuthURL(name string, postProcessAuth func(string) string) (s
 	oauth.UpdateTokens(Token{})
 
 	// Fill the struct with the necessary fields filled for the next call to getting the HTTP client
+	red := cr
+
+	// no custom redirect URI defined, we setup our own
+	var l net.Listener
+	if cr == "" {
+		// set up the listener to get the redirect URI
+		l, err = oauth.setupListener()
+		if err != nil {
+			return "", errors.WrapPrefix(err, "oauth.setupListener error", 0)
+		}
+		port := l.Addr().(*net.TCPAddr).Port
+		// see https://git.sr.ht/~fkooman/vpn-user-portal/tree/v3/item/src/OAuth/VpnClientDb.php
+		red = fmt.Sprintf("http://127.0.0.1:%d/callback", port)
+	}
 	oauth.session = exchangeSession{
 		ISS:      oauth.ISS,
 		State:    state,
 		Verifier: v,
 		ErrChan:  make(chan error),
-	}
-
-	// set up the listener to get the redirect URI
-	if err = oauth.setupListener(); err != nil {
-		return "", errors.WrapPrefix(err, "oauth.setupListener error", 0)
-	}
-
-	// Get the listener port
-	port, err := oauth.ListenerPort()
-	if err != nil {
-		return "", errors.WrapPrefix(err, "oauth.ListenerPort error", 0)
+		RedirectURI: red,
+		Listener: l,
 	}
 
 	params := map[string]string{
@@ -491,7 +495,7 @@ func (oauth *OAuth) AuthURL(name string, postProcessAuth func(string) string) (s
 		"response_type":         "code",
 		"scope":                 "config",
 		"state":                 state,
-		"redirect_uri":          fmt.Sprintf("http://127.0.0.1:%d/callback", port),
+		"redirect_uri":          red,
 	}
 
 	p, err := url.Parse(oauth.BaseAuthorizationURL)
@@ -510,12 +514,24 @@ func (oauth *OAuth) AuthURL(name string, postProcessAuth func(string) string) (s
 	return postProcessAuth(u), nil
 }
 
+func (oauth *OAuth) tokensWithURI(ctx context.Context, uri string) error {
+	// parse URI
+	p, err := url.Parse(uri)
+	if err != nil {
+		return err
+	}
+	return oauth.tokenHandler(ctx, p)
+}
+
 // Exchange starts the OAuth exchange by getting the tokens with the redirect callback
 // If it was unsuccessful it returns an error.
-func (oauth *OAuth) Exchange(ctx context.Context) error {
+func (oauth *OAuth) Exchange(ctx context.Context, uri string) error {
 	// If there is no HTTP client defined, create a new one
 	if oauth.httpClient == nil {
 		oauth.httpClient = httpw.NewClient()
+	}
+	if uri != "" {
+		return oauth.tokensWithURI(ctx, uri)
 	}
 	return oauth.tokensWithCallback(ctx)
 }

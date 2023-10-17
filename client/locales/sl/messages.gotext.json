@@ -34,7 +34,7 @@
         {
             "id": "The client tried to autoconnect to the VPN server: {Namesrv}, but no secure internet location is found. Please manually connect again",
             "message": "The client tried to autoconnect to the VPN server: {Namesrv}, but no secure internet location is found. Please manually connect again",
-            "translation": "",
+            "translation": "Odjemalec je poskusil samodejno vzpostaviti povezavo s strežnikom VPN {Namesrv}, vendar ni našel nobene lokacije za varni splet. Ponovno vzpostavite povezavo ročno",
             "placeholders": [
                 {
                     "id": "Namesrv",
@@ -54,7 +54,7 @@
         {
             "id": "The client tried to autoconnect to the VPN server: {Namesrv}, but you need to authorizate again. Please manually connect again",
             "message": "The client tried to autoconnect to the VPN server: {Namesrv}, but you need to authorizate again. Please manually connect again",
-            "translation": "",
+            "translation": "Odjemalec je poskusil samodejno vzpostaviti povezavo s strežnikom VPN {Namesrv}, vendar ga morate ponovno avtorizirati. Ponovno vzpostavite povezavo ročno",
             "placeholders": [
                 {
                     "id": "Namesrv",
@@ -74,7 +74,7 @@
         {
             "id": "The client tried to autoconnect to the VPN server: {Namesrv}, but no valid profiles were found. Please manually connect again",
             "message": "The client tried to autoconnect to the VPN server: {Namesrv}, but no valid profiles were found. Please manually connect again",
-            "translation": "",
+            "translation": "Odjemalec je poskusil samodejno vzpostaviti povezavo s strežnikom VPN {Namesrv}, vendar ni našel nobenega veljavnega profila. Ponovno vzpostavite povezavo ročno",
             "placeholders": [
                 {
                     "id": "Namesrv",
@@ -283,6 +283,11 @@
             "translation": "Napaka pri določanju izbranega strežnika za čiščenje povezave"
         },
         {
+            "id": "The cleanup process was canceled",
+            "message": "The cleanup process was canceled",
+            "translation": ""
+        },
+        {
             "id": "Failed to cleanup the VPN connection for the current server",
             "message": "Failed to cleanup the VPN connection for the current server",
             "translation": "Napaka pri čiščenju povezave VPN za izbrani strežnik"
@@ -298,9 +303,14 @@
             "translation": "Napaka pri ugotavljanju izbranega strežnika za podaljšanje seje"
         },
         {
+            "id": "The renewing process was canceled",
+            "message": "The renewing process was canceled",
+            "translation": ""
+        },
+        {
             "id": "Failover failed to complete with gateway: '{Gateway}' and MTU: '{Mtu}'",
             "message": "Failover failed to complete with gateway: '{Gateway}' and MTU: '{Mtu}'",
-            "translation": "",
+            "translation": "Preklop ni uspel s prehodom '{Gateway}' in MTU-jem '{Mtu}'",
             "placeholders": [
                 {
                     "id": "Gateway",
@@ -333,7 +343,7 @@
         {
             "id": "An internal error occurred",
             "message": "An internal error occurred",
-            "translation": ""
+            "translation": "Prišlo je do notranje napake"
         }
     ]
 }
