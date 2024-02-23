@@ -1,4 +1,4 @@
-// package server defines public types that have to deal with the VPN server
+// Package server defines public types that have to deal with the VPN server
 package server
 
 import (
@@ -23,7 +23,7 @@ const (
 	TypeCustom
 )
 
-// This is here to support V1 configs which had the server type as a string
+// UnmarshalJSON is set here here to support V1 configs which had the server type as a string
 func (t *Type) UnmarshalJSON(data []byte) error {
 	// First try to just unmarshal the type
 	var num int8
@@ -86,14 +86,14 @@ type Profile struct {
 	// E.g. {"en": "Default Profile"}
 	// If this is empty, the field is omitted from the JSON
 	DisplayName map[string]string `json:"display_name,omitempty"`
-	// Protocols is the list of protocols that this profile supports
-	Protocols []protocol.Protocol `json:"supported_protocols"`
 }
 
 // Profiles is the map of profiles with the current defined
 type Profiles struct {
 	// Map, the map of profiles from profile ID to the profile contents
 	// If this is empty, the field is omitted from the JSON
+	// Note that it can be empty if the profiles have not been initialized
+	// This could happen if a config is not obtained yet
 	Map map[string]Profile `json:"map,omitempty"`
 	// Current is the current profile ID that is defined
 	Current string `json:"current"`
@@ -106,7 +106,7 @@ type Tokens struct {
 	// Refresh is the refresh token
 	Refresh string `json:"refresh_token"`
 	// Expires is the Unix timestamp when the token expires
-	Expires int64 `json:"expires_in"`
+	Expires int64 `json:"expires_at"`
 }
 
 // Server is the basic type for a server. This is the base for secure internet and institute access. Custom servers are equal to this type
@@ -126,7 +126,7 @@ type Institute struct {
 	// Server is the embedded server struct
 	Server
 	// SupportContacts are the list of support contacts
-	SupportContacts []string `json:"support_contacts"`
+	SupportContacts []string `json:"support_contacts,omitempty"`
 	// Delisted is a boolean that indicates whether or not this server is delisted from discovery
 	// If it is, the UI should show a warning symbol or move the server to a new category, which is up to the client
 	Delisted bool `json:"delisted"`
@@ -139,9 +139,9 @@ type SecureInternet struct {
 	// CountryCode is the country code of the currently configured location, e.g. "nl"
 	CountryCode string `json:"country_code"`
 	// Locations is the list of available secure internet locations
-	Locations []string `json:"locations"`
+	Locations []string `json:"locations,omitempty"`
 	// SupportContacts are the list of support contacts
-	SupportContacts []string `json:"support_contacts"`
+	SupportContacts []string `json:"support_contacts,omitempty"`
 	// Delisted is a boolean that indicates whether or not this server is delisted from discovery
 	// If it is, the UI should show a warning symbol or move the server to a new category, which is up to the client
 	Delisted bool `json:"delisted"`
@@ -157,6 +157,16 @@ type List struct {
 	Custom []Server `json:"custom_servers,omitempty"`
 }
 
+// Proxy defines the structure with the arguments that should be passed to start proxyguard
+type Proxy struct {
+	// SourcePort is the source port for the client TCP connection
+	SourcePort int `json:"source_port"`
+	// Listen is the ip:port for the client UDP connection, this is the value that is replaced in the config
+	Listen string `json:"listen"`
+	// Peer is the ip:port of the upstream server
+	Peer string `json:"peer"`
+}
+
 // Configuration is the configuration that you get back when you call the get config function
 type Configuration struct {
 	// VPNConfig is the VPN Configuration, a WireGuard or OpenVPN Configuration
@@ -167,6 +177,13 @@ type Configuration struct {
 	Protocol protocol.Protocol `json:"protocol"`
 	// DefaultGateway is a boolean that indicates whether or not this configuration should be configured as a default gateway
 	DefaultGateway bool `json:"default_gateway"`
+	// DNSSearchDomains are the list of dns search domains
+	DNSSearchDomains []string `json:"dns_search_domains,omitempty"`
+	// ShouldFailover returns whether or not the client should attempt to failover
+	ShouldFailover bool `json:"should_failover"`
+	// Proxy returns information for proxied VPN connections
+	// If this is non-nil a proxy must be started using StartProxyguard
+	Proxy *Proxy `json:"proxy,omitempty"`
 }
 
 // Current is the struct that defines the current server

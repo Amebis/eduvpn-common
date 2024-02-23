@@ -8,16 +8,16 @@ import (
 	"net/http/httptest"
 
 	httpw "github.com/eduvpn/eduvpn-common/internal/http"
-	"github.com/go-errors/errors"
 )
 
+// Server wraps a HTTP test server
 type Server struct {
 	*httptest.Server
 }
 
+// NewServer creates a new test server
 func NewServer(handler http.Handler) *Server {
 	s := httptest.NewTLSServer(handler)
-
 	return &Server{s}
 }
 
@@ -28,18 +28,20 @@ func (srv *Server) Client() (*httpw.Client, error) {
 	for _, c := range srv.TLS.Certificates {
 		roots, err := x509.ParseCertificates(c.Certificate[len(c.Certificate)-1])
 		if err != nil {
-			return nil, errors.WrapPrefix(err, "failed to parse root certificate", 0)
+			return nil, err
 		}
 		for _, root := range roots {
 			certs.AddCert(root)
 		}
 	}
-	// Override the client such that it only trusts the test server cert
-	client := httpw.NewClient()
-	client.Client.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs: certs,
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: certs,
+			},
 		},
 	}
-	return client, nil
+	// Override the client such that it only trusts the test server cert
+	httpC := httpw.NewClient(client)
+	return httpC, nil
 }

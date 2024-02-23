@@ -1,4 +1,4 @@
-// package protocol contains hte public type that have to do with VPN protocols
+// Package protocol contains hte public type that have to do with VPN protocols
 package protocol
 
 // Protocol defines an 'enumeration' of protocols
@@ -11,6 +11,8 @@ const (
 	OpenVPN
 	// WireGuard indicates that the protocol is WireGuard
 	WireGuard
+	// WireGuardProxy indicates that the protocol is WireGuard with proxyguard
+	WireGuardProxy
 )
 
 // New creates a new protocol type from a string

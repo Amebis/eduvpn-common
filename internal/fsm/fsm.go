@@ -7,8 +7,6 @@ import (
 	"os"
 	"path"
 	"sort"
-
-	"github.com/go-errors/errors"
 )
 
 type (
@@ -18,14 +16,17 @@ type (
 	StateIDSlice []StateID
 )
 
+// Len is defined here such that we can sort the slice
 func (v StateIDSlice) Len() int {
 	return len(v)
 }
 
+// Less is defined here such that we can sort the slice
 func (v StateIDSlice) Less(i, j int) bool {
 	return v[i] < v[j]
 }
 
+// Swap is defined here such that we can sort the slice
 func (v StateIDSlice) Swap(i, j int) {
 	v[i], v[j] = v[j], v[i]
 }
@@ -38,9 +39,8 @@ type Transition struct {
 	Description string
 }
 
-type (
-	States map[StateID]State
-)
+// States is the map from state identifier to the state itself
+type States map[StateID]State
 
 // State represents a single node in the graph.
 type State struct {
@@ -99,8 +99,12 @@ func (fsm *FSM) InState(check StateID) bool {
 	return check == fsm.Current
 }
 
+// CheckTransition returns an error whether or not a transition to
+// state `desired` is possible
 func (fsm *FSM) CheckTransition(desired StateID) error {
-	if desired == fsm.initial {
+	// initial or begin state is fine
+	// 0 = deregistered
+	if desired == fsm.initial || desired == 0 {
 		return nil
 	}
 	for _, ts := range fsm.States[fsm.Current].Transitions {
@@ -108,7 +112,7 @@ func (fsm *FSM) CheckTransition(desired StateID) error {
 			return nil
 		}
 	}
-	return errors.Errorf("fsm invalid transition attempt from '%s' to '%s'", fsm.GetStateName(fsm.Current), fsm.GetStateName(desired))
+	return fmt.Errorf("fsm invalid transition attempt from '%s' to '%s'", fsm.GetStateName(fsm.Current), fsm.GetStateName(desired))
 }
 
 // graphFilename gets the full path to the graph filename including the .graph extension.
@@ -146,7 +150,7 @@ func (fsm *FSM) GoTransitionRequired(newState StateID, data interface{}) error {
 	}
 	// transition is not handled
 	if !handled {
-		return errors.Errorf("fsm failed transition from '%v' to '%v', is this required transition handled?", fsm.GetStateName(oldState), fsm.GetStateName(newState))
+		return fmt.Errorf("fsm failed transition from '%s' to '%s', is this required transition handled?", fsm.GetStateName(oldState), fsm.GetStateName(newState))
 	}
 	return nil
 }
@@ -163,7 +167,6 @@ func (fsm *FSM) GoTransitionWithData(newState StateID, data interface{}) (bool, 
 	if fsm.Generate {
 		fsm.writeGraph()
 	}
-
 	return fsm.StateCallback(prev, newState, data), nil
 }
 

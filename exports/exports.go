@@ -21,24 +21,29 @@ typedef long long int (*ReadRxBytes)();
 
 typedef int (*StateCB)(int oldstate, int newstate, void* data);
 
-typedef void (*TokenGetter)(const char* server, char* out, size_t len);
-typedef void (*TokenSetter)(const char* server, const char* tokens);
+typedef void (*TokenGetter)(const char* server_id, int server_type, char* out, size_t len);
+typedef void (*TokenSetter)(const char* server_id, int server_type, const char* tokens);
+typedef void (*ProxyFD)(int fd);
 
 static long long int get_read_rx_bytes(ReadRxBytes read)
 {
-   return read();
+    return read();
 }
 static int call_callback(StateCB callback, int oldstate, int newstate, void* data)
 {
     return callback(oldstate, newstate, data);
 }
-static void call_token_getter(TokenGetter getter, const char* server, char* out, size_t len)
+static void call_token_getter(TokenGetter getter, const char* server_id, int server_type, char* out, size_t len)
 {
-   getter(server, out, len);
+    getter(server_id, server_type, out, len);
 }
-static void call_token_setter(TokenSetter setter, const char* server, const char* tokens)
+static void call_token_setter(TokenSetter setter, const char* server_id, int server_type, const char* tokens)
 {
-   setter(server, tokens);
+    setter(server_id, server_type, tokens);
+}
+static void call_proxy_fd(ProxyFD proxyfd, int fd)
+{
+    proxyfd(fd);
 }
 */
 import "C"
@@ -50,8 +55,6 @@ import (
 	"runtime/cgo"
 	"unsafe"
 
-	"github.com/go-errors/errors"
-
 	"github.com/eduvpn/eduvpn-common/client"
 	"github.com/eduvpn/eduvpn-common/i18nerr"
 	"github.com/eduvpn/eduvpn-common/internal/log"
@@ -60,6 +63,7 @@ import (
 	srvtypes "github.com/eduvpn/eduvpn-common/types/server"
 )
 
+// VPNState is the current state of the library
 var VPNState *client.Client
 
 func getCError(err error) *C.char {
@@ -118,7 +122,7 @@ func stateCallback(
 
 func getVPNState() (*client.Client, error) {
 	if VPNState == nil {
-		return nil, errors.New("No state available, did you register the client?")
+		return nil, i18nerr.NewInternal("No state available, did you register the client?")
 	}
 	return VPNState, nil
 }
@@ -149,12 +153,12 @@ func getVPNState() (*client.Client, error) {
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "failed to register, a VPN state is already present"
-//      },
-//      "misc": false
-//    }
+//	{
+//	  "message": {
+//	    "en": "failed to register, a VPN state is already present"
+//	  },
+//	  "misc": false
+//	}
 //
 //export Register
 func Register(
@@ -166,7 +170,7 @@ func Register(
 ) *C.char {
 	_, stateErr := getVPNState()
 	if stateErr == nil {
-		return getCError(errors.New("failed to register, a VPN state is already present"))
+		return getCError(i18nerr.NewInternal("failed to register, a VPN state is already present"))
 	}
 	c, err := client.New(
 		C.GoString(name),
@@ -207,16 +211,17 @@ func Register(
 // ```ExpiryTimes()```
 //
 // Example Output (1...4 are unix timestamps):
-//    {
-//         "start_time": 1,
-//         "end_time": 2,
-//         "button_time": 3,
-//         "countdown_time": 4,
-//         "notification_times": [
-//             1,
-//             2,
-//         ],
-//    }, null
+//
+//	{
+//	     "start_time": 1,
+//	     "end_time": 2,
+//	     "button_time": 3,
+//	     "countdown_time": 4,
+//	     "notification_times": [
+//	         1,
+//	         2,
+//	     ],
+//	}, null
 //
 //export ExpiryTimes
 func ExpiryTimes() (*C.char, *C.char) {
@@ -248,13 +253,12 @@ func ExpiryTimes() (*C.char, *C.char) {
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "failed to deregister"
-//      },
-//      "misc": false
-//    }
-//
+//	{
+//	  "message": {
+//	    "en": "failed to deregister"
+//	  },
+//	  "misc": false
+//	}
 //
 //export Deregister
 func Deregister() *C.char {
@@ -299,13 +303,12 @@ func Deregister() *C.char {
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "failed to add server"
-//      },
-//      "misc": false
-//    }
-//
+//	{
+//	  "message": {
+//	    "en": "failed to add server"
+//	  },
+//	  "misc": false
+//	}
 //
 //export AddServer
 func AddServer(c C.uintptr_t, _type C.int, id *C.char, ni C.int) *C.char {
@@ -341,12 +344,12 @@ func AddServer(c C.uintptr_t, _type C.int, id *C.char, ni C.int) *C.char {
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "failed to remove server"
-//      },
-//      "misc": false
-//    }
+//	{
+//	  "message": {
+//	    "en": "failed to remove server"
+//	  },
+//	  "misc": false
+//	}
 //
 //export RemoveServer
 func RemoveServer(_type C.int, id *C.char) *C.char {
@@ -370,42 +373,43 @@ func RemoveServer(_type C.int, id *C.char) *C.char {
 // ```CurrentServer()```
 //
 // Example Output:
-//    {
-//      "institute_access_server": {
-//        "display_name": {
-//          "en": "Demo"
-//        },
-//        "identifier": "https://demo.eduvpn.nl/",
-//        "profiles": {
-//          "map": {
-//            "internet": {
-//              "display_name": {
-//                "en": "Internet"
-//              },
-//              "supported_protocols": [
-//                1,
-//                2
-//              ]
-//            },
-//            "internet-split": {
-//              "display_name": {
-//                "en": "No rfc1918 routes"
-//              },
-//              "supported_protocols": [
-//                1,
-//                2
-//              ]
-//            }
-//          },
-//          "current": "internet"
-//        },
-//        "support_contacts": [
-//          "mailto:eduvpn@surf.nl"
-//        ],
-//        "delisted": false
-//      },
-//      "server_type": 1
-//    }, null
+//
+//	{
+//	  "institute_access_server": {
+//	    "display_name": {
+//	      "en": "Demo"
+//	    },
+//	    "identifier": "https://demo.eduvpn.nl/",
+//	    "profiles": {
+//	      "map": {
+//	        "internet": {
+//	          "display_name": {
+//	            "en": "Internet"
+//	          },
+//	          "supported_protocols": [
+//	            1,
+//	            2
+//	          ]
+//	        },
+//	        "internet-split": {
+//	          "display_name": {
+//	            "en": "No rfc1918 routes"
+//	          },
+//	          "supported_protocols": [
+//	            1,
+//	            2
+//	          ]
+//	        }
+//	      },
+//	      "current": "internet"
+//	    },
+//	    "support_contacts": [
+//	      "mailto:eduvpn@surf.nl"
+//	    ],
+//	    "delisted": false
+//	  },
+//	  "server_type": 1
+//	}, null
 //
 //export CurrentServer
 func CurrentServer() (*C.char, *C.char) {
@@ -436,24 +440,23 @@ func CurrentServer() (*C.char, *C.char) {
 //
 // Example Output (current profile here is empty as none has been chosen yet):
 //
-//    {
-//      "institute_access_servers": [
-//        {
-//          "display_name": {
-//            "en": "Demo"
-//          },
-//          "identifier": "https://demo.eduvpn.nl/",
-//          "profiles": {
-//            "current": ""
-//          },
-//          "support_contacts": [
-//            "mailto:eduvpn@surf.nl"
-//          ],
-//          "delisted": false
-//        }
-//      ]
-//    }, null
-//
+//	{
+//	  "institute_access_servers": [
+//	    {
+//	      "display_name": {
+//	        "en": "Demo"
+//	      },
+//	      "identifier": "https://demo.eduvpn.nl/",
+//	      "profiles": {
+//	        "current": ""
+//	      },
+//	      "support_contacts": [
+//	        "mailto:eduvpn@surf.nl"
+//	      ],
+//	      "delisted": false
+//	    }
+//	  ]
+//	}, null
 //
 //export ServerList
 func ServerList() (*C.char, *C.char) {
@@ -472,7 +475,7 @@ func ServerList() (*C.char, *C.char) {
 	return C.CString(ret), nil
 }
 
-// GetConfig gets a configuration for the server
+// GetConfig gets a configuration for the server. It returns additional information in case WireGuard over Proxyguard is used (see the last example)
 //
 // `c` is the cookie that is used for cancellation. Create a cookie first with CookieNew, this same cookie is also used for replying to state transitions
 //
@@ -557,11 +560,22 @@ func ServerList() (*C.char, *C.char) {
 //
 // Example Output (2=WireGuard):
 //
-//    {
-//     "config": "https://demo.eduvpn.nl/\n# Profile: ...\n# Expires: ...\n\n[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...=\nAllowedIPs = 0.0.0.0/0,::/0\nEndpoint = ...",
-//     "protocol": 2,
-//     "default_gateway": true
-//    }
+//	{
+//	 "config": "[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...=\nAllowedIPs = 0.0.0.0/0,::/0\nEndpoint = ...",
+//	 "protocol": 2,
+//	 "default_gateway": true,
+//	 "should_failover": true, <- whether or not the failover procedure should happen
+//	}
+//
+// Example Output (3=WireGuard + Proxyguard):
+//
+//	{
+//	"config":"[Interface]\nMTU = ...\nAddress = ...\nDNS = ...\nPrivateKey = ...\n[Peer]\nPublicKey = ...\nAllowedIPs = ...\nEndpoint = 127.0.0.1:x\n",
+//	"protocol":3,
+//	"default_gateway":true,
+//	"should_failover":true,
+//	"proxy":{"source_port":38683,"listen":"127.0.0.1:59812","peer":"https://..."}
+//	}
 //
 //export GetConfig
 func GetConfig(c C.uintptr_t, _type C.int, id *C.char, pTCP C.int, startup C.int) (*C.char, *C.char) {
@@ -596,12 +610,12 @@ func GetConfig(c C.uintptr_t, _type C.int, id *C.char, pTCP C.int, startup C.int
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "profile does not exist"
-//      },
-//      "misc": false
-//    }
+//	{
+//	  "message": {
+//	    "en": "profile does not exist"
+//	  },
+//	  "misc": false
+//	}
 //
 //export SetProfileID
 func SetProfileID(data *C.char) *C.char {
@@ -617,34 +631,28 @@ func SetProfileID(data *C.char) *C.char {
 //
 // This MUST only be called if the user/client wishes to manually set a location instead of the common lib asking for one using a transition
 //
-// Because this does network requests to initialize the location, there is a cookie again :)
-//
-// `c` is the Cookie that needs to be passed. To create a cookie, first call `CookieNew`
-// `Data` is the location ID
+// `orgID` is the organisation ID for the secure internet server
+// `cc` is the location ID/country code
 //
 // It returns an error if unsuccessful.
-// Example Input: ```SetSecureLocation("nl")```
+// Example Input: ```SetSecureLocation("http://idp.geant.org/", "nl")```
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "location does not exist"
-//      },
-//      "misc": false
-//    }
+//	{
+//	  "message": {
+//	    "en": "location does not exist"
+//	  },
+//	  "misc": false
+//	}
 //
 //export SetSecureLocation
-func SetSecureLocation(c C.uintptr_t, data *C.char) *C.char {
+func SetSecureLocation(orgID *C.char, cc *C.char) *C.char {
 	state, stateErr := getVPNState()
 	if stateErr != nil {
 		return getCError(stateErr)
 	}
-	ck, err := getCookie(c)
-	if err != nil {
-		return getCError(err)
-	}
-	locationErr := state.SetSecureLocation(ck, C.GoString(data))
+	locationErr := state.SetSecureLocation(C.GoString(orgID), C.GoString(cc))
 	return getCError(locationErr)
 }
 
@@ -659,27 +667,27 @@ func SetSecureLocation(c C.uintptr_t, data *C.char) *C.char {
 //
 // Example Output:
 //
-//     {
-//      "v": 1695291170,
-//      "server_list": [
-//        {
-//          "base_url": "https://eduvpn.rash.al/",
-//          "country_code": "AL",
-//          "public_key_list": [
-//            "k7.pub.S4j5JJiTEz1fWMkI.hzU_xJasWzD6Da2WR7hgbobx9n3o4XSDeqFh03tgM-0"
-//          ],
-//          "server_type": "secure_internet",
-//          "support_contact": [
-//            "mailto:helpdesk@rash.al"
-//          ]
-//        },
-//        {
-//          "base_url": "https://eduvpn.deic.dk/",
-//          "country_code": "DK",
-//          "public_key_list": [
-//            "k7.pub.RNOJIYbemlfsE7EL.BxmV2l2UV7pCqz135ofBgyG9-xLg0R9rILQedZrfLtE"
-//          ], ..................
-//     } , null
+//	{
+//	 "v": 1695291170,
+//	 "server_list": [
+//	   {
+//	     "base_url": "https://eduvpn.rash.al/",
+//	     "country_code": "AL",
+//	     "public_key_list": [
+//	       "k7.pub.S4j5JJiTEz1fWMkI.hzU_xJasWzD6Da2WR7hgbobx9n3o4XSDeqFh03tgM-0"
+//	     ],
+//	     "server_type": "secure_internet",
+//	     "support_contact": [
+//	       "mailto:helpdesk@rash.al"
+//	     ]
+//	   },
+//	   {
+//	     "base_url": "https://eduvpn.deic.dk/",
+//	     "country_code": "DK",
+//	     "public_key_list": [
+//	       "k7.pub.RNOJIYbemlfsE7EL.BxmV2l2UV7pCqz135ofBgyG9-xLg0R9rILQedZrfLtE"
+//	     ], ..................
+//	} , null
 //
 //export DiscoServers
 func DiscoServers(c C.uintptr_t) (*C.char, *C.char) {
@@ -712,32 +720,33 @@ func DiscoServers(c C.uintptr_t) (*C.char, *C.char) {
 // Example Input: ```DiscoOrganizations(myCookie)```
 //
 // Example Output:
-//    {
-//     "v": 1695291170,
-//     "organization_list": [
-//       {
-//         "display_name": {
-//           "en": "Academic Network of Albania - RASH"
-//         },
-//         "org_id": "https://idp.rash.al/simplesaml/saml2/idp/metadata.php",
-//         "secure_internet_home": "https://eduvpn.rash.al/"
-//       },
-//       {
-//         "display_name": {
-//           "da": "Dansk Sprognævn",
-//           "en": "Danish Language Council"
-//         },
-//         "org_id": "http://idp.dsn.dk/adfs/services/trust",
-//         "secure_internet_home": "https://eduvpn.deic.dk/"
-//       },
-//       {
-//         "display_name": {
-//           "da": "Erhvervsakademi Aarhus",
-//           "en": "Business Academy Aarhus"
-//         },
-//         "org_id": "http://adfs.eaaa.dk/adfs/services/trust",
-//         "secure_inte .....................
-//    }, null
+//
+//	{
+//	 "v": 1695291170,
+//	 "organization_list": [
+//	   {
+//	     "display_name": {
+//	       "en": "Academic Network of Albania - RASH"
+//	     },
+//	     "org_id": "https://idp.rash.al/simplesaml/saml2/idp/metadata.php",
+//	     "secure_internet_home": "https://eduvpn.rash.al/"
+//	   },
+//	   {
+//	     "display_name": {
+//	       "da": "Dansk Sprognævn",
+//	       "en": "Danish Language Council"
+//	     },
+//	     "org_id": "http://idp.dsn.dk/adfs/services/trust",
+//	     "secure_internet_home": "https://eduvpn.deic.dk/"
+//	   },
+//	   {
+//	     "display_name": {
+//	       "da": "Erhvervsakademi Aarhus",
+//	       "en": "Business Academy Aarhus"
+//	     },
+//	     "org_id": "http://adfs.eaaa.dk/adfs/services/trust",
+//	     "secure_inte .....................
+//	}, null
 //
 //export DiscoOrganizations
 func DiscoOrganizations(c C.uintptr_t) (*C.char, *C.char) {
@@ -771,12 +780,13 @@ func DiscoOrganizations(c C.uintptr_t) (*C.char, *C.char) {
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "cleanup was not successful"
-//      },
-//      "misc": false
-//    }
+//	{
+//	  "message": {
+//	    "en": "cleanup was not successful"
+//	  },
+//	  "misc": false
+//	}
+//
 //export Cleanup
 func Cleanup(c C.uintptr_t) *C.char {
 	state, stateErr := getVPNState()
@@ -802,12 +812,12 @@ func Cleanup(c C.uintptr_t) *C.char {
 //
 // Example Output:
 //
-//    {
-//      "message": {
-//        "en": "could not renew session"
-//      },
-//      "misc": false
-//    }
+//	{
+//	  "message": {
+//	    "en": "could not renew session"
+//	  },
+//	  "misc": false
+//	}
 //
 //export RenewSession
 func RenewSession(c C.uintptr_t) *C.char {
@@ -832,14 +842,14 @@ func RenewSession(c C.uintptr_t) *C.char {
 // `support` thus indicates whether or not to enable WireGuard
 // An error is returned if this is not possible
 //
-//
 //export SetSupportWireguard
 func SetSupportWireguard(support C.int) *C.char {
 	state, stateErr := getVPNState()
 	if stateErr != nil {
 		return getCError(stateErr)
 	}
-	state.SupportsWireguard = support != 0
+	// TODO: Do not do any nested struct member here
+	state.Servers.WGSupport = support != 0
 	return nil
 }
 
@@ -873,7 +883,7 @@ func StartFailover(c C.uintptr_t, gateway *C.char, mtu C.int, readRxBytes C.Read
 	dropped, droppedErr := state.StartFailover(ck, C.GoString(gateway), int(mtu), func() (int64, error) {
 		rxBytes := int64(C.get_read_rx_bytes(readRxBytes))
 		if rxBytes < 0 {
-			return 0, errors.New("client gave an invalid rx bytes value")
+			return 0, i18nerr.NewInternal("client gave an invalid rx bytes value")
 		}
 		return rxBytes, nil
 	})
@@ -885,6 +895,39 @@ func StartFailover(c C.uintptr_t, gateway *C.char, mtu C.int, readRxBytes C.Read
 		droppedC = C.int(1)
 	}
 	return droppedC, nil
+}
+
+// StartProxyguard starts the 'proxyguard' procedure in eduvpn-common.
+// This proxies WireGuard UDP connections over HTTP: https://codeberg.org/eduvpn/proxyguard.
+// These input variables can be gotten from the configuration that is retrieved using the `proxy` JSON key
+//
+//   - `c` is the cookie
+//   - `listen` is the ip:port of the local udp connection, this is what is set to the WireGuard endpoint
+//   - `tcpsp` is the TCP source port
+//   - `peer` is the ip:port of the remote server
+//   - `proxyFD` is a callback with the file descriptor as only argument. It can be used to set certain
+//     socket option, e.g. to exclude the proxy connection from going over the VPN
+//
+// If the proxy cannot be started it returns an error
+//
+//export StartProxyguard
+func StartProxyguard(c C.uintptr_t, listen *C.char, tcpsp C.int, peer *C.char, proxyFD C.ProxyFD) *C.char {
+	state, stateErr := getVPNState()
+	if stateErr != nil {
+		return getCError(stateErr)
+	}
+	ck, err := getCookie(c)
+	if err != nil {
+		return getCError(err)
+	}
+
+	proxyErr := state.StartProxyguard(ck, C.GoString(listen), int(tcpsp), C.GoString(peer), func(fd int) {
+		if proxyFD == nil {
+			return
+		}
+		C.call_proxy_fd(proxyFD, C.int(fd))
+	})
+	return getCError(proxyErr)
 }
 
 // SetState sets the state of the statemachine
@@ -937,12 +980,12 @@ func FreeString(addr *C.char) {
 
 func getCookie(c C.uintptr_t) (*cookie.Cookie, error) {
 	if c == 0 {
-		return nil, errors.New("cookie is nil")
+		return nil, i18nerr.NewInternal("cookie is nil")
 	}
 	h := cgo.Handle(c)
 	v, ok := h.Value().(*cookie.Cookie)
 	if !ok {
-		return nil, errors.New("value is not a cookie")
+		return nil, i18nerr.NewInternal("value is not a cookie")
 	}
 	// the cookie itself has a reference to the handle
 	// such that we can return the same exact handle in callbacks
@@ -983,36 +1026,26 @@ func SetTokenHandler(getter C.TokenGetter, setter C.TokenSetter) *C.char {
 	if stateErr != nil {
 		return getCError(stateErr)
 	}
-	state.TokenSetter = func(c srvtypes.Current, t srvtypes.Tokens) {
-		cJSON, err := getReturnData(c)
-		if err != nil {
-			log.Logger.Warningf("failed to get current server for setting tokens in exports: %v", err)
-			return
-		}
+	state.TokenSetter = func(sid string, stype srvtypes.Type, t srvtypes.Tokens) {
 		tJSON, err := getReturnData(t)
 		if err != nil {
 			log.Logger.Warningf("failed to get tokens for setting tokens in exports: %v", err)
 			return
 		}
-		c1 := C.CString(cJSON)
+		c1 := C.CString(sid)
 		c2 := C.CString(tJSON)
-		C.call_token_setter(setter, c1, c2)
+		C.call_token_setter(setter, c1, C.int(stype), c2)
 		FreeString(c1)
 		FreeString(c2)
 	}
 
-	state.TokenGetter = func(c srvtypes.Current) *srvtypes.Tokens {
-		cJSON, err := getReturnData(c)
-		if err != nil {
-			log.Logger.Warningf("failed to get current server for getting tokens in exports: %v", err)
-			return nil
-		}
-		c1 := C.CString(cJSON)
+	state.TokenGetter = func(sid string, stype srvtypes.Type) *srvtypes.Tokens {
 		// create an output buffer with size 2048
 		// In my testing tokens seem to be ~1033 bytes marshalled as JSON
 		d := make([]byte, 2048)
 
-		C.call_token_getter(getter, c1, (*C.char)(unsafe.Pointer(&d[0])), C.size_t(len(d)))
+		c1 := C.CString(sid)
+		C.call_token_getter(getter, c1, C.int(stype), (*C.char)(unsafe.Pointer(&d[0])), C.size_t(len(d)))
 		FreeString(c1)
 
 		// get null pointer index as unmarshalling wants it without
@@ -1029,7 +1062,7 @@ func SetTokenHandler(getter C.TokenGetter, setter C.TokenSetter) *C.char {
 		}
 
 		var gotT srvtypes.Tokens
-		err = json.Unmarshal(d[:null], &gotT)
+		err := json.Unmarshal(d[:null], &gotT)
 		if err != nil {
 			log.Logger.Warningf("failed to get JSON data for getting tokens in exports: %v", err)
 			return nil
@@ -1050,8 +1083,8 @@ func SetTokenHandler(getter C.TokenGetter, setter C.TokenSetter) *C.char {
 //
 //   - Send a reply to a state transition (ASK_PROFILE and ASK_LOCATION)
 //
-// Functions that take a cookie have it as the first argument
-
+// # Functions that take a cookie have it as the first argument
+//
 // Example Input: ```CookieNew()```
 //
 // Example Output: ```5```
@@ -1059,7 +1092,7 @@ func SetTokenHandler(getter C.TokenGetter, setter C.TokenSetter) *C.char {
 //export CookieNew
 func CookieNew() C.uintptr_t {
 	c := cookie.NewWithContext(context.Background())
-	return C.uintptr_t(cgo.NewHandle(&c))
+	return C.uintptr_t(cgo.NewHandle(c))
 }
 
 // CookieReply replies to a state transition using the cookie

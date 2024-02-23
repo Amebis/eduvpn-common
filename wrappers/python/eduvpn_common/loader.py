@@ -107,7 +107,7 @@ def initialize_functions(lib: CDLL) -> None:
     lib.CookieCancel.argtypes, lib.CookieCancel.restype = [c_int], c_void_p
     lib.CookieDelete.argtypes, lib.CookieDelete.restype = [c_int], c_void_p
     lib.SetSecureLocation.argtypes, lib.SetSecureLocation.restype = [
-        c_int,
+        c_char_p,
         c_char_p,
     ], c_void_p
     lib.SetSupportWireguard.argtypes, lib.SetSupportWireguard.restype = [
@@ -125,3 +125,10 @@ def initialize_functions(lib: CDLL) -> None:
         c_int,
         ReadRxBytes,
     ], BoolError
+    lib.StartProxyguard.argtypes, lib.StartProxyguard.restype = [
+        c_int,
+        c_char_p,
+        c_int,
+        c_char_p,
+        c_void_p,
+    ], c_void_p

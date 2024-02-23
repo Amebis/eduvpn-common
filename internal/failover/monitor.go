@@ -2,10 +2,11 @@ package failover
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/eduvpn/eduvpn-common/internal/log"
-	"github.com/go-errors/errors"
 )
 
 // The DroppedConMon is a connection monitor that checks for an increase in rx bytes in certain intervals
@@ -19,6 +20,10 @@ type DroppedConMon struct {
 	readRxBytes func() (int64, error)
 }
 
+// NewDroppedMonitor creates a new failover monitor
+// `pingInterval` is the interval in which to send pings
+// `pDropped` is how many pings we need to send before we deem it is dropped
+// `readRxBytes` is a function that gets the rx bytes from the client
 func NewDroppedMonitor(pingInterval time.Duration, pDropped int, readRxBytes func() (int64, error)) *DroppedConMon {
 	return &DroppedConMon{pInterval: pingInterval, pDropped: pDropped, readRxBytes: readRxBytes}
 }
@@ -91,7 +96,7 @@ func (m *DroppedConMon) Start(ctx context.Context, gateway string, mtuSize int) 
 		case <-ticker.C:
 			continue
 		case <-ctx.Done():
-			return false, errors.WrapPrefix(context.Canceled, "failover was stopped", 0)
+			return false, fmt.Errorf("failover was stopped with error: %w", context.Canceled)
 		}
 	}
 

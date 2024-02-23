@@ -9,7 +9,6 @@ import (
 	"path"
 
 	"github.com/eduvpn/eduvpn-common/internal/util"
-	"github.com/go-errors/errors"
 )
 
 // FileLogger defines the type of logger that this package implements
@@ -25,6 +24,7 @@ type FileLogger struct {
 // Logger is the global logger instance
 var Logger *FileLogger
 
+// Level is the level of log, e.g. debug
 type Level int8
 
 const (
@@ -80,7 +80,7 @@ func (logger *FileLogger) Init(lvl Level, dir string) error {
 		0o666,
 	)
 	if err != nil {
-		return errors.WrapPrefix(err, "failed creating log", 0)
+		return fmt.Errorf("failed creating log: %w", err)
 	}
 	multi := io.MultiWriter(os.Stdout, f)
 	log.SetOutput(multi)
@@ -89,7 +89,7 @@ func (logger *FileLogger) Init(lvl Level, dir string) error {
 	return nil
 }
 
-// Inheritf logs an error with a message and params using the error level verbosity of the error.
+// Inherit logs an error with a message and params using the error level verbosity of the error.
 // The message is always prefixed with the error.
 func (logger *FileLogger) Inherit(err error, msg string) {
 	if err == nil {

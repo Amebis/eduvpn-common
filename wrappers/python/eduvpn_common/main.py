@@ -38,6 +38,14 @@ class ServerType(IntEnum):
     SECURE_INTERNET = 2
     CUSTOM = 3
 
+    def __str__(self) -> str:
+        if self == ServerType.INSTITUTE_ACCESS:
+            return "Institute Access Server"
+        if self == ServerType.CUSTOM:
+            return "Custom Server"
+        if self == ServerType.SECURE_INTERNET:
+            return "Secure Internet Server"
+        return "Unknown Server"
 
 class Jar(object):
     """A cookie jar"""
@@ -99,7 +107,7 @@ class EduVPN(object):
         Also handles decoding the result
 
         :param func: Any: The Go function to call from the shared library
-        :param \*args: Iterator: The arguments to call the function with
+        :param args: Iterator: The arguments to call the function with
 
         :meta private:
         """
@@ -270,15 +278,16 @@ class EduVPN(object):
         if profile_err:
             forwardError(profile_err)
 
-    def set_secure_location(self, country_code: str) -> None:
+    def set_secure_location(self, org_id: str, country_code: str) -> None:
         """Set the secure location
 
+        :param org_id: str: The organisation ID
         :param country_code: str: The country code of the new location
 
         :raises WrappedError: An error by the Go library
         """
         # Set the location by country code
-        location_err = self.go_cookie_function(self.lib.SetSecureLocation, country_code)
+        location_err = self.go_function(self.lib.SetSecureLocation, org_id, country_code)
 
         # If there is a location event, set it so that the wait callback finishes
         # And so that the Go code can move to the next state
@@ -336,6 +345,17 @@ class EduVPN(object):
             forwardError(dropped_err)
         return dropped
 
+    def start_proxyguard(self, listen: str, source_port: int, peer: str):
+        proxy_err = self.go_cookie_function(
+            self.lib.StartProxyguard,
+            listen,
+            source_port,
+            peer,
+            0,
+        )
+        if proxy_err:
+            forwardError(proxy_err)
+
     def cancel(self):
         self.jar.cancel()
 
@@ -344,23 +364,23 @@ global_object: Optional[EduVPN] = None
 
 
 @TokenSetter
-def token_setter(server: ctypes.c_char_p, tokens: ctypes.c_char_p):
+def token_setter(server_id: ctypes.c_char_p, server_type: ctypes.c_int, tokens: ctypes.c_char_p):
     global global_object
     if global_object is None:
         return
     if global_object.token_setter is None:
         return 0
-    global_object.token_setter(server.decode(), tokens.decode())
+    global_object.token_setter(server_id.decode(), server_type, tokens.decode())
 
 
 @TokenGetter
-def token_getter(server: ctypes.c_char_p, buf: ctypes.c_char_p, size: ctypes.c_size_t):
+def token_getter(server_id: ctypes.c_char_p, server_type: ctypes.c_int, buf: ctypes.c_char_p, size: ctypes.c_size_t):
     global global_object
     if global_object is None:
         return
     if global_object.token_getter is None:
         return
-    got = global_object.token_getter(server.decode())
+    got = global_object.token_getter(server_id.decode(), server_type)
     if got is None:
         return
 

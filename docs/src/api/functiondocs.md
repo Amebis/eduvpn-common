@@ -27,6 +27,7 @@ This document was automatically generated from the exports/exports.go file
     * [SetSupportWireguard](#setsupportwireguard)
     * [SetTokenHandler](#settokenhandler)
     * [StartFailover](#startfailover)
+    * [StartProxyguard](#startproxyguard)
 
 # About the API
 package main implements the main exported API to be used by other languages
@@ -167,6 +168,17 @@ Signature:
  ```go
 func CookieNew() C.uintptr_t
 ```
+CookieNew creates a new cookie and returns it
+
+This value should not be parsed or converted somehow by the client This
+value is simply to pass back to the Go library This value has two purposes:
+
+  - Cancel a long running function
+
+  - Send a reply to a state transition (ASK_PROFILE and ASK_LOCATION)
+
+# Functions that take a cookie have it as the first argument
+
 Example Input: ```CookieNew()```
 
 Example Output: ```5```
@@ -405,7 +417,8 @@ Signature:
  ```go
 func GetConfig(c C.uintptr_t, _type C.int, id *C.char, pTCP C.int, startup C.int) (*C.char, *C.char)
 ```
-GetConfig gets a configuration for the server
+GetConfig gets a configuration for the server. It returns additional
+information in case WireGuard over Proxyguard is used (see the last example)
 
 `c` is the cookie that is used for cancellation. Create a cookie first with
 CookieNew, this same cookie is also used for replying to state transitions
@@ -515,9 +528,20 @@ Example Input (3=custom server): ```GetConfig(myCookie, 3,
 Example Output (2=WireGuard):
 
     {
-     "config": "https://demo.eduvpn.nl/\n# Profile: ...\n# Expires: ...\n\n[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...=\nAllowedIPs = 0.0.0.0/0,::/0\nEndpoint = ...",
+     "config": "[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...=\nAllowedIPs = 0.0.0.0/0,::/0\nEndpoint = ...",
      "protocol": 2,
-     "default_gateway": true
+     "default_gateway": true,
+     "should_failover": true, <- whether or not the failover procedure should happen
+    }
+
+Example Output (3=WireGuard + Proxyguard):
+
+    {
+    "config":"[Interface]\nMTU = ...\nAddress = ...\nDNS = ...\nPrivateKey = ...\n[Peer]\nPublicKey = ...\nAllowedIPs = ...\nEndpoint = 127.0.0.1:x\n",
+    "protocol":3,
+    "default_gateway":true,
+    "should_failover":true,
+    "proxy":{"source_port":38683,"listen":"127.0.0.1:59812","peer":"https://..."}
     }
 
 ## InState
@@ -701,7 +725,7 @@ Example Output:
 ## SetSecureLocation
 Signature:
  ```go
-func SetSecureLocation(c C.uintptr_t, data *C.char) *C.char
+func SetSecureLocation(orgID *C.char, cc *C.char) *C.char
 ```
 SetSecureLocation sets the location for the secure internet server if it
 exists
@@ -709,14 +733,11 @@ exists
 This MUST only be called if the user/client wishes to manually set a
 location instead of the common lib asking for one using a transition
 
-Because this does network requests to initialize the location, there is a
-cookie again :)
-
-`c` is the Cookie that needs to be passed. To create a cookie, first call
-`CookieNew` `Data` is the location ID
+`orgID` is the organisation ID for the secure internet server `cc` is the
+location ID/country code
 
 It returns an error if unsuccessful. Example Input:
-```SetSecureLocation("nl")```
+```SetSecureLocation("http://idp.geant.org/", "nl")```
 
 Example Output:
 
@@ -819,4 +840,25 @@ Example Input: ```StartFailover(myCookie, "10.10.10.1", 1400,
 myRxBytesReader)```
 
 Example Output: ```1, null```
+
+## StartProxyguard
+Signature:
+ ```go
+func StartProxyguard(c C.uintptr_t, listen *C.char, tcpsp C.int, peer *C.char, proxyFD C.ProxyFD) *C.char
+```
+StartProxyguard starts the 'proxyguard' procedure in
+eduvpn-common. This proxies WireGuard UDP connections over HTTP:
+https://codeberg.org/eduvpn/proxyguard. These input variables can be gotten
+from the configuration that is retrieved using the `proxy` JSON key
+
+  - `c` is the cookie
+  - `listen` is the ip:port of the local udp connection, this is what is set
+    to the WireGuard endpoint
+  - `tcpsp` is the TCP source port
+  - `peer` is the ip:port of the remote server
+  - `proxyFD` is a callback with the file descriptor as only argument.
+    It can be used to set certain socket option, e.g. to exclude the proxy
+    connection from going over the VPN
+
+If the proxy cannot be started it returns an error
 

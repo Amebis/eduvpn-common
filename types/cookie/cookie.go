@@ -1,4 +1,4 @@
-// package cookie implements a specialized version of a context
+// Package cookie implements a specialized version of a context
 // - It is cancellable
 // - It has a channel associated with it to reply to state callbacks
 // - It can be marshalled by having a cgo Handle attached to it
@@ -7,11 +7,13 @@ package cookie
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"runtime/cgo"
-
-	"github.com/go-errors/errors"
 )
 
+// Cookie is the cookie which is just a context with some other data associated with it
+// We could potentially only uses contexts with values, but this is nicer for type checking
 type Cookie struct {
 	c         chan string
 	ctx       context.Context
@@ -19,11 +21,23 @@ type Cookie struct {
 	H         cgo.Handle
 }
 
+// contextt is the context type for the value
+type contextt int8
+
+// CONTEXTK is the key of the cookie
+const CONTEXTK contextt = 0
+
 // NewWithContext creates a new cookie with a context
 // It stores the cancel and channel inside of the struct
-func NewWithContext(ctx context.Context) Cookie {
+func NewWithContext(ctx context.Context) *Cookie {
+	// if the context already has a handle, return that cookie
+	if h, ok := ctx.Value(CONTEXTK).(cgo.Handle); ok {
+		if ck, ok := h.Value().(*Cookie); ok {
+			return ck
+		}
+	}
 	ctx, cancel := context.WithCancel(ctx)
-	return Cookie{
+	return &Cookie{
 		c:         make(chan string),
 		ctx:       ctx,
 		ctxCancel: cancel,
@@ -47,7 +61,7 @@ func (c *Cookie) Receive(errchan chan error) (string, error) {
 	case e := <-errchan:
 		return "", e
 	case <-c.ctx.Done():
-		return "", errors.WrapPrefix(context.Canceled, "receive cookie", 0)
+		return "", fmt.Errorf("receive cookie done: %w", context.Canceled)
 	}
 }
 
@@ -65,7 +79,7 @@ func (c *Cookie) Cancel() error {
 func (c *Cookie) Send(data string) error {
 	select {
 	case <-c.ctx.Done():
-		return errors.WrapPrefix(context.Canceled, "send cookie", 0)
+		return fmt.Errorf("send cookie done: %w", context.Canceled)
 	default:
 		if c.c == nil {
 			return errors.New("channel is nil")
@@ -77,5 +91,5 @@ func (c *Cookie) Send(data string) error {
 
 // Context gets the underlying context of the cookie
 func (c *Cookie) Context() context.Context {
-	return c.ctx
+	return context.WithValue(c.ctx, CONTEXTK, c.H)
 }

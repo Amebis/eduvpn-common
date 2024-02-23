@@ -2,31 +2,18 @@
 package util
 
 import (
-	"crypto/rand"
 	"fmt"
 	"net/url"
 	"os"
 	"strings"
-
-	"github.com/go-errors/errors"
 )
-
-// MakeRandomByteSlice creates a cryptographically random bytes slice of `size`
-// It returns the byte slice (or nil if error) and an error if it could not be generated.
-func MakeRandomByteSlice(n int) ([]byte, error) {
-	bs := make([]byte, n)
-	if _, err := rand.Read(bs); err != nil {
-		return nil, errors.WrapPrefix(err, "failed reading random", 0)
-	}
-	return bs, nil
-}
 
 // EnsureDirectory creates a directory with permission 700.
 func EnsureDirectory(dir string) error {
 	// Create with 700 permissions, read, write, execute only for the owner
 	err := os.MkdirAll(dir, 0o700)
 	if err != nil {
-		return errors.WrapPrefix(err, fmt.Sprintf("failed to create directory '%s'", dir), 0)
+		return fmt.Errorf("failed to create directory '%s' with error: %w", dir, err)
 	}
 	return nil
 }

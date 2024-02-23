@@ -3,6 +3,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
+	"github.com/eduvpn/eduvpn-common/internal/version"
 )
 
 // UserAgent is the user agent that is used for requests
@@ -53,7 +54,7 @@ func cleanPath(u *url.URL, trailing bool) string {
 func EnsureValidURL(s string, trailing bool) (string, error) {
 	u, err := url.Parse(s)
 	if err != nil {
-		return "", errors.WrapPrefix(err, "failed parsing url", 0)
+		return "", fmt.Errorf("failed parsing url with error: %w", err)
 	}
 
 	// Make sure the scheme is always https
@@ -67,11 +68,11 @@ func EnsureValidURL(s string, trailing bool) (string, error) {
 func JoinURLPath(u string, p string) (string, error) {
 	pu, err := url.Parse(u)
 	if err != nil {
-		return "", errors.WrapPrefix(err, "failed to parse url for joining paths", 0)
+		return "", fmt.Errorf("failed to parse url for joining paths with error: %w", err)
 	}
 	pp, err := url.Parse(p)
 	if err != nil {
-		return "", errors.WrapPrefix(err, "failed to parse path for joining paths", 0)
+		return "", fmt.Errorf("failed to parse path for joining paths with error: %w", err)
 	}
 	fp := pu.ResolveReference(pp)
 
@@ -95,8 +96,7 @@ func ConstructURL(u *url.URL, params URLParameters) (string, error) {
 func optionalURL(urlStr string, opts *OptionalParams) (string, error) {
 	u, err := url.Parse(urlStr)
 	if err != nil {
-		return "", errors.WrapPrefix(err,
-			fmt.Sprintf("failed to construct parse url '%s'", urlStr), 0)
+		return "", fmt.Errorf("failed to construct parse url '%s' with error: %w", urlStr, err)
 	}
 	// Make sure the scheme is always set to HTTPS
 	if u.Scheme != "https" {
@@ -115,7 +115,9 @@ func optionalHeaders(req *http.Request, opts *OptionalParams) {
 	// Add headers
 	if opts != nil && req != nil && opts.Headers != nil {
 		for k, v := range opts.Headers {
-			req.Header.Add(k, v[0])
+			for _, cv := range v {
+				req.Header.Add(k, cv)
+			}
 		}
 	}
 }
@@ -144,9 +146,12 @@ type Client struct {
 	Timeout time.Duration
 }
 
-// Returns a HTTP client with some default settings
-func NewClient() *Client {
-	c := &http.Client{}
+// NewClient returns a HTTP client with some default settings
+func NewClient(client *http.Client) *Client {
+	c := client
+	if c == nil {
+		c = &http.Client{}
+	}
 	// ReadLimit denotes the maximum amount of bytes that are read in HTTP responses
 	// This is used to prevent servers from sending huge amounts of data
 	// A limit of 16MB, although maybe much larger than needed, ensures that we do not run into problems
@@ -164,7 +169,7 @@ func (c *Client) PostWithOpts(ctx context.Context, url string, opts *OptionalPar
 	return c.Do(ctx, http.MethodPost, url, opts)
 }
 
-// MethodWithOpts Do send a HTTP request using a method (e.g. GET, POST), an url and optional parameters
+// Do sends a HTTP request using a method (e.g. GET, POST), an url and optional parameters
 // It returns the HTTP headers, the body and an error if there is one.
 func (c *Client) Do(ctx context.Context, method string, urlStr string, opts *OptionalParams) (http.Header, []byte, error) {
 	// Make sure the url contains all the parameters
@@ -188,8 +193,7 @@ func (c *Client) Do(ctx context.Context, method string, urlStr string, opts *Opt
 	// Create request object with the body reader generated from the optional arguments
 	req, err := http.NewRequestWithContext(ctx, method, urlStr, optionalBodyReader(opts))
 	if err != nil {
-		return nil, nil, errors.WrapPrefix(err,
-			fmt.Sprintf("failed HTTP request with method %s and url %s", method, urlStr), 0)
+		return nil, nil, fmt.Errorf("failed HTTP request with method: '%s', url: '%s' and error: %w", method, urlStr, err)
 	}
 	if UserAgent != "" {
 		req.Header.Add("User-Agent", UserAgent)
@@ -201,8 +205,10 @@ func (c *Client) Do(ctx context.Context, method string, urlStr string, opts *Opt
 	// Do request
 	res, err := c.Client.Do(req)
 	if err != nil {
-		return nil, nil, errors.WrapPrefix(err,
-			fmt.Sprintf("failed HTTP request with method %s and url %s", method, urlStr), 0)
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, nil, &TimeoutError{URL: urlStr, Method: method}
+		}
+		return nil, nil, fmt.Errorf("failed HTTP request with method: '%s', url: '%s' and error: %w", method, urlStr, err)
 	}
 
 	// Request successful, make sure body is closed at the end
@@ -218,15 +224,29 @@ func (c *Client) Do(ctx context.Context, method string, urlStr string, opts *Opt
 	r := http.MaxBytesReader(nil, res.Body, c.ReadLimit)
 	body, err := io.ReadAll(r)
 	if err != nil {
-		return res.Header, nil, errors.WrapPrefix(err,
-			fmt.Sprintf("failed HTTP request with method: %s, url: %s and max bytes size: %v", method, urlStr, c.ReadLimit), 0)
+		return res.Header, nil, fmt.Errorf("failed HTTP request with method: '%s', url: '%s', max bytes size: '%v' and error: %w", method, urlStr, c.ReadLimit, err)
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {
-		return res.Header, body, errors.Wrap(&StatusError{URL: urlStr, Body: string(body), Status: res.StatusCode}, 0)
+		return res.Header, body, fmt.Errorf("failed HTTP request with method: '%s' due to a status error: %w", method, &StatusError{URL: urlStr, Body: string(body), Status: res.StatusCode})
 	}
 
 	// Return the body in bytes and signal the status error if there was one
 	return res.Header, body, nil
+}
+
+// TimeoutError indicates that we have gotten a timeout
+type TimeoutError struct {
+	URL    string
+	Method string
+}
+
+// Error returns the TimeoutError as an error string.
+func (e *TimeoutError) Error() string {
+	return fmt.Sprintf(
+		"timeout in obtaining HTTP resource: '%s' with method: '%s'",
+		e.URL,
+		e.Method,
+	)
 }
 
 // StatusError indicates that we have received a HTTP status error.
@@ -239,7 +259,7 @@ type StatusError struct {
 // Error returns the StatusError as an error string.
 func (e *StatusError) Error() string {
 	return fmt.Sprintf(
-		"failed obtaining HTTP resource: %s as it gave an unsuccessful status code: %d. Body: %s",
+		"failed obtaining HTTP resource: '%s' as it gave an unsuccessful status code: '%d'. Body: '%s'",
 		e.URL,
 		e.Status,
 		e.Body,
@@ -247,6 +267,6 @@ func (e *StatusError) Error() string {
 }
 
 // RegisterAgent registers the user agent for client and version
-func RegisterAgent(client string, version string) {
-	UserAgent = fmt.Sprintf("%s/%s %s", client, version, "eduvpn-common/2.0.0")
+func RegisterAgent(client string, verApp string) {
+	UserAgent = fmt.Sprintf("%s/%s eduvpn-common/%s", client, verApp, version.Version)
 }
