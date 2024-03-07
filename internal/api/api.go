@@ -56,27 +56,28 @@ type API struct {
 	cb Callbacks
 	// oauth is the oauth object
 	oauth *eduoauth.OAuth
-	// apiURL is the API url to send a request to
-	apiURL string
 	// Data is the server data
 	Data ServerData
 }
 
 // NewAPI creates a new API object by creating an OAuth object
 func NewAPI(ctx context.Context, clientID string, sd ServerData, cb Callbacks, tokens *eduoauth.Token) (*API, error) {
-	ep, epauth, err := refreshEndpoints(ctx, sd)
-	if err != nil {
-		return nil, err
-	}
-
 	cr := customRedirect(clientID)
 	// Construct OAuth
 	o := eduoauth.OAuth{
-		ClientID:             clientID,
-		BaseAuthorizationURL: epauth.Authorization,
-		TokenURL:             epauth.Token,
-		CustomRedirect:       cr,
-		RedirectPath:         "/callback",
+		ClientID: clientID,
+		EndpointFunc: func(ctx context.Context) (*eduoauth.EndpointResponse, error) {
+			ep, err := GetEndpointCache().Get(ctx, sd.BaseAuthWK)
+			if err != nil {
+				return nil, err
+			}
+			return &eduoauth.EndpointResponse{
+				AuthorizationURL: ep.API.V3.Authorization,
+				TokenURL:         ep.API.V3.Token,
+			}, nil
+		},
+		CustomRedirect: cr,
+		RedirectPath:   "/callback",
 		TokensUpdated: func(tok eduoauth.Token) {
 			cb.TokensUpdated(sd.ID, sd.Type, tok)
 		},
@@ -87,12 +88,11 @@ func NewAPI(ctx context.Context, clientID string, sd ServerData, cb Callbacks, t
 	}
 
 	api := &API{
-		cb:     cb,
-		oauth:  &o,
-		apiURL: ep.API,
-		Data:   sd,
+		cb:    cb,
+		oauth: &o,
+		Data:  sd,
 	}
-	err = api.authorize(ctx)
+	err := api.authorize(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (a *API) authorize(ctx context.Context) (err error) {
 	}()
 
 	scope := "config"
-	url, err := a.oauth.AuthURL(scope)
+	url, err := a.oauth.AuthURL(ctx, scope)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,11 @@ func (a *API) authorize(ctx context.Context) (err error) {
 }
 
 func (a *API) authorized(ctx context.Context, method string, endpoint string, opts *httpw.OptionalParams) (http.Header, []byte, error) {
-	u := a.apiURL + endpoint
+	ep, err := GetEndpointCache().Get(ctx, a.Data.BaseWK)
+	if err != nil {
+		return nil, nil, err
+	}
+	u := ep.API.V3.API + endpoint
 
 	// TODO: Cache HTTP client?
 	httpC := httpw.NewClient(a.oauth.NewHTTPClient())
@@ -188,11 +192,11 @@ func (a *API) Disconnect(ctx context.Context) error {
 func (a *API) Info(ctx context.Context) (*profiles.Info, error) {
 	_, body, err := a.authorizedRetry(ctx, http.MethodGet, "/info", nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed API /info: %v", err)
+		return nil, fmt.Errorf("failed API /info: %w", err)
 	}
 	p := profiles.Info{}
 	if err = json.Unmarshal(body, &p); err != nil {
-		return nil, fmt.Errorf("failed API /info: %v", err)
+		return nil, fmt.Errorf("failed API /info: %w", err)
 	}
 	return &p, nil
 }
@@ -273,14 +277,14 @@ func (a *API) Connect(ctx context.Context, prof profiles.Profile, protos []proto
 	params := &httpw.OptionalParams{Headers: hdrs, Body: uv}
 	h, body, err := a.authorizedRetry(ctx, http.MethodPost, "/connect", params)
 	if err != nil {
-		return nil, fmt.Errorf("failed API /connect call: %v", err)
+		return nil, fmt.Errorf("failed API /connect call: %w", err)
 	}
 
 	// Parse expiry
 	expH := h.Get("expires")
 	expT, err := http.ParseTime(expH)
 	if err != nil {
-		return nil, fmt.Errorf("failed parsing expiry time: %v", err)
+		return nil, fmt.Errorf("failed parsing expiry time: %w", err)
 	}
 
 	vpnCfg := string(body)
@@ -333,28 +337,6 @@ func getEndpoints(ctx context.Context, url string) (*endpoints.Endpoints, error)
 		return nil, err
 	}
 	return &ep, nil
-}
-
-func refreshEndpoints(ctx context.Context, sd ServerData) (*endpoints.List, *endpoints.List, error) {
-	// Get the endpoints
-	ep, err := getEndpoints(ctx, sd.BaseWK)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// This is a mess but we essentially have to instantiate different endpoints if the authorization base URL is different from the base portal URL
-	// This happens with secure internet when the location is not equal to the home location
-	var epauth *endpoints.Endpoints
-	if sd.BaseAuthWK != sd.BaseWK {
-		oep, err := getEndpoints(ctx, sd.BaseAuthWK)
-		if err != nil {
-			return nil, nil, err
-		}
-		epauth = oep
-	} else {
-		epauth = ep
-	}
-	return &ep.API.V3, &epauth.API.V3, err
 }
 
 // OAuthLogger is defined here to update the internal logger

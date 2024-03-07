@@ -200,8 +200,6 @@ func (c *Client) AuthDone(id string, t srvtypes.Type) {
 	if err == nil {
 		srv.LastAuthorizeTime = time.Now()
 	}
-	// TODO: Should this log anything if it fails?
-	// unhandled transition?
 	_, err = c.FSM.GoTransition(StateMain)
 	if err != nil {
 		log.Logger.Debugf("unhandled auth done main transition: %v", err)
@@ -436,7 +434,7 @@ func (c *Client) GetConfig(ck *cookie.Cookie, identifier string, _type srvtypes.
 			}
 			return nil, i18nerr.Wrapf(err, "The client tried to autoconnect to the VPN server: '%s', but the operation failed to complete", identifier)
 		}
-		return nil, i18nerr.Wrapf(err, "Server: '%s' could not be obtained", identifier)
+		return nil, i18nerr.Wrapf(err, "Server: '%s' could not be connected to", identifier)
 	}
 
 	cfg, err := c.Servers.ConnectWithCallbacks(ck.Context(), srv, pTCP)

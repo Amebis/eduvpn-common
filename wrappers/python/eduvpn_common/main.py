@@ -5,6 +5,8 @@ from typing import Any, Callable, Iterator, Optional
 
 from eduvpn_common.loader import initialize_functions, load_lib
 from eduvpn_common.types import (
+    ProxyReady,
+    ProxySetup,
     ReadRxBytes,
     TokenGetter,
     TokenSetter,
@@ -345,13 +347,14 @@ class EduVPN(object):
             forwardError(dropped_err)
         return dropped
 
-    def start_proxyguard(self, listen: str, source_port: int, peer: str):
+    def start_proxyguard(self, listen: str, source_port: int, peer: str, setup: ProxySetup, ready: ProxyReady):
         proxy_err = self.go_cookie_function(
             self.lib.StartProxyguard,
             listen,
             source_port,
             peer,
-            0,
+            setup,
+            ready,
         )
         if proxy_err:
             forwardError(proxy_err)
