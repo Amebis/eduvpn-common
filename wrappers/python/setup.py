@@ -10,7 +10,7 @@ from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 
 _libname = "eduvpn_common"
-__version__ = "2.0.0"
+__version__ = "1.99.0"
 
 
 def getlibpath(plat_name: str) -> typing.Union[str, None]:
@@ -106,7 +106,9 @@ class bdist_wheel(_bdist_wheel):
         if os.path.isdir(p):
             shutil.rmtree(p)
         os.makedirs(p)
-        shutil.copyfile(self.exports_lib_path + "/" + libpath, p+"/"+libpath.split("/")[-1])
+        shutil.copyfile(
+            self.exports_lib_path + "/" + libpath, p + "/" + libpath.split("/")[-1]
+        )
         _bdist_wheel.run(self)
         shutil.rmtree(p)
 
