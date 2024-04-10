@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"time"
 
 	"github.com/eduvpn/eduvpn-common/internal/api"
 	"github.com/eduvpn/eduvpn-common/internal/config/v2"
 	"github.com/eduvpn/eduvpn-common/internal/discovery"
+	"github.com/eduvpn/eduvpn-common/internal/log"
 	"github.com/eduvpn/eduvpn-common/types/server"
 	"github.com/jwijenbergh/eduoauth-go"
 )
@@ -16,11 +16,11 @@ import (
 // `disco` are the discovery servers
 // `id` is the identifier for the server, the base url
 // `na` is true when authorization should not be triggered
-func (s *Servers) AddInstitute(ctx context.Context, disco *discovery.Discovery, id string, na bool) (*Server, error) {
+func (s *Servers) AddInstitute(ctx context.Context, disco *discovery.Discovery, id string, na bool) error {
 	// This is basically done to double check if the server is part of the institute access section of disco
 	dsrv, err := disco.ServerByURL(id, "institute_access")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	sd := api.ServerData{
@@ -30,22 +30,27 @@ func (s *Servers) AddInstitute(ctx context.Context, disco *discovery.Discovery, 
 		BaseAuthWK: dsrv.BaseURL,
 	}
 
-	var a *api.API
-	if !na {
-		// Authorize by creating the API object
-		a, err = api.NewAPI(ctx, s.clientID, sd, s.cb, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	err = s.config.AddServer(dsrv.BaseURL, server.TypeInstituteAccess, v2.Server{LastAuthorizeTime: time.Now()})
+	err = s.config.AddServer(dsrv.BaseURL, server.TypeInstituteAccess, v2.Server{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	inst := s.NewServer(dsrv.BaseURL, server.TypeInstituteAccess, a)
-	return &inst, nil
+	// no authorization should be triggered, return
+	if na {
+		return nil
+	}
+
+	// Authorize by creating the API object
+	_, err = api.NewAPI(ctx, s.clientID, sd, s.cb, nil)
+	if err != nil {
+		// authorization has failed, remove the server again
+		rerr := s.config.RemoveServer(dsrv.BaseURL, server.TypeInstituteAccess)
+		if rerr != nil {
+			log.Logger.Warningf("could not remove institute access server: '%s' after failing authorization: %v", dsrv.BaseURL, rerr)
+		}
+		return err
+	}
+	return nil
 }
 
 // GetInstitute gets an institute access server

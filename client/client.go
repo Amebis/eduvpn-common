@@ -34,9 +34,6 @@ type Client struct {
 	// The fsm
 	FSM fsm.FSM
 
-	// Whether or not this client supports WireGuard
-	SupportsWireguard bool
-
 	// Whether to enable debugging
 	Debug bool
 
@@ -145,16 +142,13 @@ func New(name string, version string, directory string, stateCallback func(FSMSt
 	// Initialize the FSM
 	c.FSM = newFSM(stateCallback, directory, debug)
 
-	// By default we support wireguard
-	c.SupportsWireguard = true
-
 	// Debug only if given
 	c.Debug = debug
 
 	c.cfg = config.NewFromDirectory(directory)
 
 	// set the servers
-	c.Servers = server.NewServers(c.Name, c, c.SupportsWireguard, c.cfg.V2)
+	c.Servers = server.NewServers(c.Name, c, c.cfg.V2)
 	return c, nil
 }
 
@@ -338,17 +332,17 @@ func (c *Client) AddServer(ck *cookie.Cookie, identifier string, _type srvtypes.
 
 	switch _type {
 	case srvtypes.TypeInstituteAccess:
-		_, err = c.Servers.AddInstitute(ck.Context(), c.cfg.Discovery(), identifier, ni)
+		err = c.Servers.AddInstitute(ck.Context(), c.cfg.Discovery(), identifier, ni)
 		if err != nil {
 			return i18nerr.Wrapf(err, "The institute access server with URL: '%s' could not be added", identifier)
 		}
 	case srvtypes.TypeSecureInternet:
-		_, err = c.Servers.AddSecure(ck.Context(), c.cfg.Discovery(), identifier, ni)
+		err = c.Servers.AddSecure(ck.Context(), c.cfg.Discovery(), identifier, ni)
 		if err != nil {
 			return i18nerr.Wrapf(err, "The secure internet server with organisation ID: '%s' could not be added", identifier)
 		}
 	case srvtypes.TypeCustom:
-		_, err = c.Servers.AddCustom(ck.Context(), identifier, ni)
+		err = c.Servers.AddCustom(ck.Context(), identifier, ni)
 		if err != nil {
 			return i18nerr.Wrapf(err, "The custom server with URL: '%s' could not be added", identifier)
 		}
@@ -372,11 +366,10 @@ func (c *Client) convertIdentifier(identifier string, t srvtypes.Type) (string, 
 }
 
 // GetConfig gets a VPN configuration
-func (c *Client) GetConfig(ck *cookie.Cookie, identifier string, _type srvtypes.Type, pTCP bool, startup bool) (*srvtypes.Configuration, error) {
+func (c *Client) GetConfig(ck *cookie.Cookie, identifier string, _type srvtypes.Type, pTCP bool, startup bool) (cfg *srvtypes.Configuration, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	previousState := c.FSM.Current
-	var err error
 
 	defer func() {
 		if err == nil {
@@ -431,7 +424,7 @@ func (c *Client) GetConfig(ck *cookie.Cookie, identifier string, _type srvtypes.
 		return nil, i18nerr.Wrapf(err, "Server: '%s' could not be connected to", identifier)
 	}
 
-	cfg, err := c.Servers.ConnectWithCallbacks(ck.Context(), srv, pTCP)
+	cfg, err = c.Servers.ConnectWithCallbacks(ck.Context(), srv, pTCP)
 	if err != nil {
 		return nil, i18nerr.Wrapf(err, "No VPN configuration for server: '%s' could be obtained", identifier)
 	}
@@ -524,6 +517,16 @@ func (c *Client) SetSecureLocation(orgID string, countryCode string) error {
 		return i18nerr.Wrapf(err, "Failed to get the secure internet server with id: '%s' for setting a location", orgID)
 	}
 	srv.CountryCode = countryCode
+
+	// no cached location profiles
+	if srv.LocationProfiles == nil {
+		return nil
+	}
+
+	// restore profile from the location
+	if v, ok := srv.LocationProfiles[srv.CountryCode]; ok {
+		srv.Profiles.Current = v
+	}
 	return nil
 }
 
