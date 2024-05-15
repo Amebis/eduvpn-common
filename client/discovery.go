@@ -13,36 +13,64 @@ func (c *Client) hasDiscovery() bool {
 	return strings.HasPrefix(c.Name, "org.eduvpn.app")
 }
 
-// DiscoOrganizations gets the organizations list from the discovery server
+// DiscoOrganizations gets the organizations list from the discovery server with search string `search`
 // If the list cannot be retrieved an error is returned.
 // If this is the case then a previous version of the list is returned if there is any.
 // This takes into account the frequency of updates, see: https://github.com/eduvpn/documentation/blob/v3/SERVER_DISCOVERY.md#organization-list.
-func (c *Client) DiscoOrganizations(ck *cookie.Cookie) (orgs *discotypes.Organizations, err error) {
+func (c *Client) DiscoOrganizations(ck *cookie.Cookie, search string) (*discotypes.Organizations, error) {
 	// Not supported with Let's Connect! & govVPN
 	if !c.hasDiscovery() {
 		return nil, i18nerr.NewInternal("Server/organization discovery with this client ID is not supported")
 	}
 
-	orgs, err = c.cfg.Discovery().Organizations(ck.Context())
+	orgs, err := c.cfg.Discovery().Organizations(ck.Context())
 	if err != nil {
 		err = i18nerr.Wrap(err, "An error occurred after getting the discovery files for the list of organizations")
 	}
-	return
+	if orgs == nil {
+		return nil, err
+	}
+
+	// convert to public subset
+	var retOrgs []discotypes.Organization
+	for _, v := range orgs.List {
+		if !v.Matches(search) {
+			continue
+		}
+		retOrgs = append(retOrgs, v.Organization)
+	}
+	return &discotypes.Organizations{
+		List: retOrgs,
+	}, err
 }
 
-// DiscoServers gets the servers list from the discovery server
+// DiscoServers gets the servers list from the discovery server with search string `search`
 // If the list cannot be retrieved an error is returned.
 // If this is the case then a previous version of the list is returned if there is any.
 // This takes into account the frequency of updates, see: https://github.com/eduvpn/documentation/blob/v3/SERVER_DISCOVERY.md#server-list.
-func (c *Client) DiscoServers(ck *cookie.Cookie) (dss *discotypes.Servers, err error) {
+func (c *Client) DiscoServers(ck *cookie.Cookie, search string) (*discotypes.Servers, error) {
 	// Not supported with Let's Connect! & govVPN
 	if !c.hasDiscovery() {
 		return nil, i18nerr.NewInternal("Server/organization discovery with this client ID is not supported")
 	}
 
-	dss, err = c.cfg.Discovery().Servers(ck.Context())
+	servs, err := c.cfg.Discovery().Servers(ck.Context())
 	if err != nil {
 		err = i18nerr.Wrap(err, "An error occurred after getting the discovery files for the list of servers")
 	}
-	return
+	if servs == nil {
+		return nil, err
+	}
+
+	// convert to public subset
+	var retServs []discotypes.Server
+	for _, v := range servs.List {
+		if !v.Matches(search) {
+			continue
+		}
+		retServs = append(retServs, v.Server)
+	}
+	return &discotypes.Servers{
+		List: retServs,
+	}, err
 }

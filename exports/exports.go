@@ -671,38 +671,44 @@ func SetSecureLocation(orgID *C.char, cc *C.char) *C.char {
 // DiscoServers gets the servers from discovery, returned as types/discovery/discovery.go Servers marshalled as JSON
 //
 // `c` is the Cookie that needs to be passed. Create a new Cookie using `CookieNew`
+// `search` is the search string for filtering the list. It checks for keywords and display name case insensitive as a substring matching. If search is empty it returns ALL servers currently known in common, including secure internet servers that do not have a display name set
 //
 // If it was unsuccessful, it returns an error. Note that when the lib was built in release mode the data is almost always non-nil, even when an error has occurred
 // This means it has just returned the cached list
 //
-// Example Input: ```DiscoServers(myCookie)```
+// Example Input: ```DiscoServers(myCookie, "")```
 //
 // Example Output:
 //
 //	{
-//	 "v": 1695291170,
 //	 "server_list": [
 //	   {
 //	     "base_url": "https://eduvpn.rash.al/",
-//	     "country_code": "AL",
-//	     "public_key_list": [
-//	       "k7.pub.S4j5JJiTEz1fWMkI.hzU_xJasWzD6Da2WR7hgbobx9n3o4XSDeqFh03tgM-0"
-//	     ],
 //	     "server_type": "secure_internet",
-//	     "support_contact": [
-//	       "mailto:helpdesk@rash.al"
-//	     ]
 //	   },
 //	   {
 //	     "base_url": "https://eduvpn.deic.dk/",
-//	     "country_code": "DK",
-//	     "public_key_list": [
-//	       "k7.pub.RNOJIYbemlfsE7EL.BxmV2l2UV7pCqz135ofBgyG9-xLg0R9rILQedZrfLtE"
-//	     ], ..................
+//	     "server_type": "secure_internet",
 //	} , null
 //
+// Example Input: ```DiscoServers(myCookie, "heanet")```
+//
+// Example Output:
+//
+//		{
+//		 "server_list": [
+//	         {
+//	           "base_url": "https://eduvpn.heanet.ie/",
+//	           "display_name": {
+//	             "en": "HEAnet Staff"
+//	            },
+//	           "server_type": "institute_access",
+//	         },
+//	       ]
+//		} , null
+//
 //export DiscoServers
-func DiscoServers(c C.uintptr_t) (*C.char, *C.char) {
+func DiscoServers(c C.uintptr_t, search *C.char) (*C.char, *C.char) {
 	state, stateErr := getVPNState()
 	if stateErr != nil {
 		return nil, getCError(stateErr)
@@ -711,7 +717,7 @@ func DiscoServers(c C.uintptr_t) (*C.char, *C.char) {
 	if err != nil {
 		return nil, getCError(err)
 	}
-	servers, err := state.DiscoServers(ck)
+	servers, err := state.DiscoServers(ck, C.GoString(search))
 	if servers == nil && err != nil {
 		return nil, getCError(err)
 	}
@@ -725,23 +731,22 @@ func DiscoServers(c C.uintptr_t) (*C.char, *C.char) {
 // DiscoOrganizations gets the organizations from discovery, returned as types/discovery/discovery.go Organizations marshalled as JSON
 //
 // `c` is the Cookie that needs to be passed. Create a new Cookie using `CookieNew`
+// `search` is the search string for filtering the list. It checks for keywords and display name case insensitive as a substring matching. If search is empty it returns ALL organizations currently known in common
 //
 // If it was unsuccessful, it returns an error. Note that when the lib was built in release mode the data is almost always non-nil, even when an error has occurred
 // This means it has just returned the cached list
 //
-// Example Input: ```DiscoOrganizations(myCookie)```
+// Example Input: ```DiscoOrganizations(myCookie, "")```
 //
 // Example Output:
 //
 //	{
-//	 "v": 1695291170,
 //	 "organization_list": [
 //	   {
 //	     "display_name": {
 //	       "en": "Academic Network of Albania - RASH"
 //	     },
 //	     "org_id": "https://idp.rash.al/simplesaml/saml2/idp/metadata.php",
-//	     "secure_internet_home": "https://eduvpn.rash.al/"
 //	   },
 //	   {
 //	     "display_name": {
@@ -749,7 +754,6 @@ func DiscoServers(c C.uintptr_t) (*C.char, *C.char) {
 //	       "en": "Danish Language Council"
 //	     },
 //	     "org_id": "http://idp.dsn.dk/adfs/services/trust",
-//	     "secure_internet_home": "https://eduvpn.deic.dk/"
 //	   },
 //	   {
 //	     "display_name": {
@@ -757,11 +761,25 @@ func DiscoServers(c C.uintptr_t) (*C.char, *C.char) {
 //	       "en": "Business Academy Aarhus"
 //	     },
 //	     "org_id": "http://adfs.eaaa.dk/adfs/services/trust",
-//	     "secure_inte .....................
 //	}, null
 //
+// Example Input: ```DiscoOrganizations(myCookie, "rash")```
+//
+// Example Output:
+//
+//		{
+//		 "organization_list": [
+//		   {
+//		     "display_name": {
+//		       "en": "Academic Network of Albania - RASH"
+//		     },
+//		     "org_id": "https://idp.rash.al/simplesaml/saml2/idp/metadata.php",
+//		   },
+//	      ]
+//		}, null
+//
 //export DiscoOrganizations
-func DiscoOrganizations(c C.uintptr_t) (*C.char, *C.char) {
+func DiscoOrganizations(c C.uintptr_t, search *C.char) (*C.char, *C.char) {
 	state, stateErr := getVPNState()
 	if stateErr != nil {
 		return nil, getCError(stateErr)
@@ -770,7 +788,7 @@ func DiscoOrganizations(c C.uintptr_t) (*C.char, *C.char) {
 	if err != nil {
 		return nil, getCError(err)
 	}
-	orgs, err := state.DiscoOrganizations(ck)
+	orgs, err := state.DiscoOrganizations(ck, C.GoString(search))
 	if orgs == nil && err != nil {
 		return nil, getCError(err)
 	}

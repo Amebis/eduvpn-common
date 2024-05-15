@@ -86,16 +86,16 @@ func TestOrganizations(t *testing.T) {
 // TestSecureLocationList tests the function for getting a list of secure internet servers
 func TestSecureLocationList(t *testing.T) {
 	d := Discovery{
-		ServerList: discotypes.Servers{
+		ServerList: Servers{
 			Version: 1,
-			List: []discotypes.Server{
+			List: []Server{
 				// institute access server, this should not be found
-				{CountryCode: "", Type: "institute_access"},
+				{Server: discotypes.Server{Type: "institute_access"}, CountryCode: ""},
 				// secure internet servers, these should be found
-				{CountryCode: "b", Type: "secure_internet"},
-				{CountryCode: "c", Type: "secure_internet"},
+				{Server: discotypes.Server{Type: "secure_internet"}, CountryCode: "b"},
+				{Server: discotypes.Server{Type: "secure_internet"}, CountryCode: "c"},
 				// Unexpected type, this should not be found
-				{CountryCode: "d", Type: "test"},
+				{Server: discotypes.Server{Type: "test"}, CountryCode: "d"},
 			},
 		},
 	}
@@ -111,15 +111,15 @@ func TestSecureLocationList(t *testing.T) {
 // TestServerByURL tests the function for getting a server by the Base URL and type
 func TestServerByURL(t *testing.T) {
 	d := Discovery{
-		ServerList: discotypes.Servers{
+		ServerList: Servers{
 			Version: 1,
-			List: []discotypes.Server{
+			List: []Server{
 				// institute access server
-				{BaseURL: "a", Type: "institute_access"},
+				{Server: discotypes.Server{BaseURL: "a", Type: "institute_access"}},
 				// secure internet servers
-				{BaseURL: "b", Type: "secure_internet"},
+				{Server: discotypes.Server{BaseURL: "b", Type: "secure_internet"}},
 				// Unexpected type, this should not be found
-				{BaseURL: "d", Type: "test"},
+				{Server: discotypes.Server{BaseURL: "d", Type: "test"}},
 			},
 		},
 	}
@@ -150,16 +150,16 @@ func TestServerByURL(t *testing.T) {
 
 // TestServerByCountryCode tests the function for getting a server by the country code
 func TestServerByCountryCode(t *testing.T) {
-	s1 := discotypes.Server{CountryCode: "a", Type: "secure_internet"}
+	s1 := Server{Server: discotypes.Server{Type: "secure_internet"}, CountryCode: "a"}
 	d := Discovery{
-		ServerList: discotypes.Servers{
+		ServerList: Servers{
 			Version: 1,
-			List: []discotypes.Server{
+			List: []Server{
 				// secure internet server
 				s1,
 				// Unexpected types, these should not be found
-				{CountryCode: "b", Type: "institute_access"},
-				{CountryCode: "c", Type: "test"},
+				{Server: discotypes.Server{Type: "institute_access"}, CountryCode: "b"},
+				{Server: discotypes.Server{Type: "test"}, CountryCode: "c"},
 			},
 		},
 	}
@@ -187,10 +187,10 @@ func TestServerByCountryCode(t *testing.T) {
 func TestOrgByID(t *testing.T) {
 	o1 := discotypes.Organization{OrgID: "a"}
 	d := Discovery{
-		OrganizationList: discotypes.Organizations{
+		OrganizationList: Organizations{
 			Version: 1,
-			List: []discotypes.Organization{
-				o1,
+			List: []Organization{
+				{Organization: o1},
 			},
 		},
 	}
@@ -209,21 +209,21 @@ func TestOrgByID(t *testing.T) {
 
 // TestSecureHomeArgs tests the function for getting an organization and matching secure internet server by organization ID
 func TestSecureHomeArgs(t *testing.T) {
-	o1 := discotypes.Organization{OrgID: "id", SecureInternetHome: "a"}
+	o1 := Organization{Organization: discotypes.Organization{OrgID: "id"}, SecureInternetHome: "a"}
 	s1 := discotypes.Server{BaseURL: "a", Type: "secure_internet"}
 	d := Discovery{
-		OrganizationList: discotypes.Organizations{
+		OrganizationList: Organizations{
 			Version: 1,
-			List: []discotypes.Organization{
-				{OrgID: "id2", SecureInternetHome: "c"},
+			List: []Organization{
+				{Organization: discotypes.Organization{OrgID: "id2"}, SecureInternetHome: "c"},
 				o1,
 			},
 		},
-		ServerList: discotypes.Servers{
+		ServerList: Servers{
 			Version: 1,
-			List: []discotypes.Server{
-				s1,
-				{BaseURL: "b"},
+			List: []Server{
+				{Server: s1},
+				{Server: discotypes.Server{BaseURL: "b"}},
 			},
 		},
 	}
