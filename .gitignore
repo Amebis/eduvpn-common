@@ -13,4 +13,9 @@
 # build output
 /eduvpn-common-cli
 /lib
+
+# coverage profile
+/common.cov
+
+# Windows resources
 /exports/resources_*.syso

@@ -45,10 +45,10 @@ type ServerData struct {
 	BaseAuthWK string
 	// ProcessAuth processes the OAuth authorization
 	ProcessAuth func(string) string
-	// SetAuthorizeTime sets the authorization time
-	SetAuthorizeTime func(time.Time)
 	// DisableAuthorize indicates whether or not new authorization requests should be disabled
 	DisableAuthorize bool
+	// Transport is the HTTP transport, only used for testing currently
+	Transport http.RoundTripper
 }
 
 // API is the top-level struct that each method is defined on
@@ -67,7 +67,7 @@ func NewAPI(ctx context.Context, clientID string, sd ServerData, cb Callbacks, t
 	o := eduoauth.OAuth{
 		ClientID: clientID,
 		EndpointFunc: func(ctx context.Context) (*eduoauth.EndpointResponse, error) {
-			ep, err := GetEndpointCache().Get(ctx, sd.BaseAuthWK)
+			ep, err := GetEndpointCache().Get(ctx, sd.BaseAuthWK, sd.Transport)
 			if err != nil {
 				return nil, err
 			}
@@ -81,6 +81,7 @@ func NewAPI(ctx context.Context, clientID string, sd ServerData, cb Callbacks, t
 		TokensUpdated: func(tok eduoauth.Token) {
 			cb.TokensUpdated(sd.ID, sd.Type, tok)
 		},
+		Transport: sd.Transport,
 	}
 
 	if tokens != nil {
@@ -107,6 +108,14 @@ func (a *API) authorize(ctx context.Context) (err error) {
 	// already authorized
 	if err == nil {
 		return nil
+	}
+
+	// otherwise check if invalid tokens,
+	// if not then something else is wrong with the API
+	// return an error
+	tErr := &eduoauth.TokensInvalidError{}
+	if !errors.As(err, &tErr) {
+		return err
 	}
 
 	if a.Data.DisableAuthorize {
@@ -141,7 +150,7 @@ func (a *API) authorize(ctx context.Context) (err error) {
 }
 
 func (a *API) authorized(ctx context.Context, method string, endpoint string, opts *httpw.OptionalParams) (http.Header, []byte, error) {
-	ep, err := GetEndpointCache().Get(ctx, a.Data.BaseWK)
+	ep, err := GetEndpointCache().Get(ctx, a.Data.BaseWK, a.Data.Transport)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -233,6 +242,12 @@ func protocolFromCT(ct string) (protocol.Protocol, error) {
 	return protocol.Unknown, fmt.Errorf("invalid content type: %s", ct)
 }
 
+// ErrNoProtocols is returned when a connect call is given with an empty protocol slice
+var ErrNoProtocols = errors.New("no protocols supplied")
+
+// ErrUnknownProtocol is returned when the client in a connect gives an unknown protocol
+var ErrUnknownProtocol = errors.New("unknown protocol supplied")
+
 // Connect sends a /connect to an eduVPN server
 // `ctx` is the context used for cancellation
 // protos is the list of protocols supported and wanted by the client
@@ -245,7 +260,7 @@ func (a *API) Connect(ctx context.Context, prof profiles.Profile, protos []proto
 	}
 
 	if len(protos) == 0 {
-		return nil, errors.New("no protocols supplied")
+		return nil, ErrNoProtocols
 	}
 
 	var wgKey *wgtypes.Key
@@ -267,7 +282,7 @@ func (a *API) Connect(ctx context.Context, prof profiles.Profile, protos []proto
 		case protocol.OpenVPN:
 			hdrs.Add("accept", "application/x-openvpn-profile")
 		default:
-			return nil, errors.New("unknown protocol supplied")
+			return nil, ErrUnknownProtocol
 		}
 	}
 	// set prefer TCP
@@ -317,12 +332,13 @@ func (a *API) Connect(ctx context.Context, prof profiles.Profile, protos []proto
 	}, nil
 }
 
-func getEndpoints(ctx context.Context, url string) (*endpoints.Endpoints, error) {
+func getEndpoints(ctx context.Context, url string, tp http.RoundTripper) (*endpoints.Endpoints, error) {
 	uStr, err := httpw.JoinURLPath(url, "/.well-known/vpn-user-portal")
 	if err != nil {
 		return nil, err
 	}
 	httpC := httpw.NewClient(nil)
+	httpC.Client.Transport = tp
 	_, body, err := httpC.Get(ctx, uStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting server endpoints with error: %w", err)
