@@ -29,7 +29,7 @@ func TranslatedInner(inner error) (string, bool) {
 	var tErr *http.TimeoutError
 	switch {
 	case errors.As(inner, &tErr):
-		return printerOrNew(language.English).Sprintf("timeout reached for URL: '%s' and HTTP method: '%s'", tErr.URL, tErr.Method), false
+		return printerOrNew(language.English).Sprintf("Timeout reached contacting URL: '%s'", tErr.URL), false
 	case errors.Is(inner, context.Canceled):
 		return unwrapped.Error(), true
 	}
@@ -52,7 +52,7 @@ func (e *Error) translated(t language.Tag) string {
 	})
 	msg := printerOrNew(t).Sprintf(e.key, e.args...)
 	if e.wrapped != nil {
-		return msg + " " + printerOrNew(t).Sprintf("with cause:") + " " + e.wrapped.Error()
+		return printerOrNew(t).Sprintf("%s. The cause of the error is: %s.", msg, e.wrapped.Error())
 	}
 	return msg
 }
@@ -150,7 +150,7 @@ func NewInternalf(disp string, args ...interface{}) *Error {
 
 // WrapInternal wraps an error and a display string into a localised internal error
 func WrapInternal(err error, disp string) *Error {
-	return NewInternal(fmt.Sprintf("%s with internal cause: %v", disp, err))
+	return Wrap(fmt.Errorf("%s with internal cause: %w", disp, err), "An internal error occurred")
 }
 
 // WrapInternalf wraps an error and a display string with args into a localised internal error

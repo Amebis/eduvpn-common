@@ -2,29 +2,9 @@
     "language": "sl",
     "messages": [
         {
-            "id": "The log file with directory: '{Directory}' failed to initialize",
-            "message": "The log file with directory: '{Directory}' failed to initialize",
-            "translation": "Napaka pri vzpostavitvi datoteke dnevnika v imeniku '{Directory}'",
-            "placeholders": [
-                {
-                    "id": "Directory",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "directory"
-                }
-            ]
-        },
-        {
-            "id": "The current server was not found when getting the VPN expiration date",
-            "message": "The current server was not found when getting the VPN expiration date",
-            "translation": ""
-        },
-        {
-            "id": "The institute access server with URL: '{Identifier}' could not be added",
-            "message": "The institute access server with URL: '{Identifier}' could not be added",
-            "translation": "Strežnika z naslovom '{Identifier}' za dostop do ustanove ni bilo možno dodati",
+            "id": "Failed to add an institute access server with URL: '{Identifier}'",
+            "message": "Failed to add an institute access server with URL: '{Identifier}'",
+            "translation": "Napaka pri dodajanju strežnika za dostop do ustanove. Strežnikov URL: '{Identifier}'",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -37,9 +17,9 @@
             ]
         },
         {
-            "id": "The secure internet server with organisation ID: '{Identifier}' could not be added",
-            "message": "The secure internet server with organisation ID: '{Identifier}' could not be added",
-            "translation": "Strežnika za varni splet organizacije z ID-jem '{Identifier}' ni bilo možno dodati",
+            "id": "Failed to add a secure internet server with organisation ID: '{Identifier}'",
+            "message": "Failed to add a secure internet server with organisation ID: '{Identifier}'",
+            "translation": "Napaka pri dodajanju strežnika za varni splet. Strežnikov URL: '{Identifier}'",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -52,9 +32,9 @@
             ]
         },
         {
-            "id": "The custom server with URL: '{Identifier}' could not be added",
-            "message": "The custom server with URL: '{Identifier}' could not be added",
-            "translation": "Svojega strežnika z naslovom '{Identifier}' ni bilo možno dodati",
+            "id": "Failed to add a server with URL: '{Identifier}'",
+            "message": "Failed to add a server with URL: '{Identifier}'",
+            "translation": "Napaka pri dodajanju strežnika z URL-jem: '{Identifier}'",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -67,9 +47,9 @@
             ]
         },
         {
-            "id": "input: '{Identifier}' is not a valid URL",
-            "message": "input: '{Identifier}' is not a valid URL",
-            "translation": "",
+            "id": "The input: '{Identifier}' is not a valid URL",
+            "message": "The input: '{Identifier}' is not a valid URL",
+            "translation": "Vnos \"{Identifier}\" ni veljaven URL",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -82,24 +62,9 @@
             ]
         },
         {
-            "id": "Server identifier: '{Identifier}', is not valid when getting a VPN configuration",
-            "message": "Server identifier: '{Identifier}', is not valid when getting a VPN configuration",
-            "translation": "",
-            "placeholders": [
-                {
-                    "id": "Identifier",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "identifier"
-                }
-            ]
-        },
-        {
-            "id": "The client tried to autoconnect to the VPN server: '{Identifier}', but you need to authorizate again. Please manually connect again",
-            "message": "The client tried to autoconnect to the VPN server: '{Identifier}', but you need to authorizate again. Please manually connect again",
-            "translation": "",
+            "id": "The client tried to autoconnect to the VPN server: '{Identifier}', but you need to authorizate again. Please manually connect again.",
+            "message": "The client tried to autoconnect to the VPN server: '{Identifier}', but you need to authorizate again. Please manually connect again.",
+            "translation": "Odjemalec se je poskusil samodejno povezati s strežnikom VPN \"{Identifier}\", vendar ga morate ponovno avtorizirati. Ponovno se povežite ročno.",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -114,7 +79,7 @@
         {
             "id": "The client tried to autoconnect to the VPN server: '{Identifier}', but the operation failed to complete",
             "message": "The client tried to autoconnect to the VPN server: '{Identifier}', but the operation failed to complete",
-            "translation": "",
+            "translation": "Odjemalec se je poskusil samodejno povezati s strežnikom VPN \"{Identifier}\", vendar mu ni uspelo",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -127,9 +92,9 @@
             ]
         },
         {
-            "id": "Server: '{Identifier}' could not be connected to",
-            "message": "Server: '{Identifier}' could not be connected to",
-            "translation": "",
+            "id": "Failed to connect to server: '{Identifier}'",
+            "message": "Failed to connect to server: '{Identifier}'",
+            "translation": "Napaka pri povezovanju s strežnikom \"{Identifier}\"",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -142,9 +107,9 @@
             ]
         },
         {
-            "id": "No VPN configuration for server: '{Identifier}' could be obtained",
-            "message": "No VPN configuration for server: '{Identifier}' could be obtained",
-            "translation": "",
+            "id": "Failed to obtain a VPN configuration for server: '{Identifier}'",
+            "message": "Failed to obtain a VPN configuration for server: '{Identifier}'",
+            "translation": "Napaka pri pridobivanju nastavitve VPN za strežnik \"{Identifier}\"",
             "placeholders": [
                 {
                     "id": "Identifier",
@@ -157,142 +122,19 @@
             ]
         },
         {
-            "id": "Server identifier: '{Identifier}', is not valid when removing the server",
-            "message": "Server identifier: '{Identifier}', is not valid when removing the server",
-            "translation": "",
-            "placeholders": [
-                {
-                    "id": "Identifier",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "identifier"
-                }
-            ]
+            "id": "Failed to obtain the list of organizations",
+            "message": "Failed to obtain the list of organizations",
+            "translation": "Napaka pri pridobivanju seznama organizacij"
         },
         {
-            "id": "The server: '{Identifier}' could not be removed",
-            "message": "The server: '{Identifier}' could not be removed",
-            "translation": "",
-            "placeholders": [
-                {
-                    "id": "Identifier",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "identifier"
-                }
-            ]
+            "id": "Failed to obtain the list of servers",
+            "message": "Failed to obtain the list of servers",
+            "translation": "Napaka pri pridobivanju seznama strežnikov"
         },
         {
-            "id": "The current server could not be retrieved",
-            "message": "The current server could not be retrieved",
-            "translation": ""
-        },
-        {
-            "id": "Failed to set the profile ID: '{PID}'",
-            "message": "Failed to set the profile ID: '{PID}'",
-            "translation": "",
-            "placeholders": [
-                {
-                    "id": "PID",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "pID"
-                }
-            ]
-        },
-        {
-            "id": "The current server was not found when cleaning up the connection",
-            "message": "The current server was not found when cleaning up the connection",
-            "translation": ""
-        },
-        {
-            "id": "No OAuth tokens were found when cleaning up the connection",
-            "message": "No OAuth tokens were found when cleaning up the connection",
-            "translation": ""
-        },
-        {
-            "id": "The server was unable to be retrieved when cleaning up the connection",
-            "message": "The server was unable to be retrieved when cleaning up the connection",
-            "translation": ""
-        },
-        {
-            "id": "Failed to cleanup the VPN connection",
-            "message": "Failed to cleanup the VPN connection",
-            "translation": ""
-        },
-        {
-            "id": "Failed to get the secure internet server with id: '{OrgID}' for setting a location",
-            "message": "Failed to get the secure internet server with id: '{OrgID}' for setting a location",
-            "translation": "",
-            "placeholders": [
-                {
-                    "id": "OrgID",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "orgID"
-                }
-            ]
-        },
-        {
-            "id": "The current server could not be retrieved when renewing the session",
-            "message": "The current server could not be retrieved when renewing the session",
-            "translation": ""
-        },
-        {
-            "id": "The server was unable to be retrieved when renewing the session",
-            "message": "The server was unable to be retrieved when renewing the session",
-            "translation": ""
-        },
-        {
-            "id": "Failover failed to complete with gateway: '{Gateway}' and MTU: '{Mtu}'",
-            "message": "Failover failed to complete with gateway: '{Gateway}' and MTU: '{Mtu}'",
-            "translation": "Preklop ni uspel s prehodom '{Gateway}' in MTU-jem '{Mtu}'",
-            "placeholders": [
-                {
-                    "id": "Gateway",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "gateway"
-                },
-                {
-                    "id": "Mtu",
-                    "string": "%[2]d",
-                    "type": "int",
-                    "underlyingType": "int",
-                    "argNum": 2,
-                    "expr": "mtu"
-                }
-            ]
-        },
-        {
-            "id": "An error occurred after getting the discovery files for the list of organizations",
-            "message": "An error occurred after getting the discovery files for the list of organizations",
-            "translation": "Pri nalaganju datotek kataloga organizacij je prišlo do napake"
-        },
-        {
-            "id": "An error occurred after getting the discovery files for the list of servers",
-            "message": "An error occurred after getting the discovery files for the list of servers",
-            "translation": "Pri nalaganju datotek kataloga strežnikov je prišlo do napake"
-        },
-        {
-            "id": "The VPN proxy exited",
-            "message": "The VPN proxy exited",
-            "translation": ""
-        },
-        {
-            "id": "timeout reached for URL: '{URL}' and HTTP method: '{Method}'",
-            "message": "timeout reached for URL: '{URL}' and HTTP method: '{Method}'",
-            "translation": "",
+            "id": "Timeout reached contacting URL: '{URL}'",
+            "message": "Timeout reached contacting URL: '{URL}'",
+            "translation": "Pri dostopu do URL-ja \"{URL}\" je prišlo do preteka časovne kontrole",
             "placeholders": [
                 {
                     "id": "URL",
@@ -301,21 +143,31 @@
                     "underlyingType": "string",
                     "argNum": 1,
                     "expr": "tErr.URL"
-                },
-                {
-                    "id": "Method",
-                    "string": "%[2]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 2,
-                    "expr": "tErr.Method"
                 }
             ]
         },
         {
-            "id": "with cause:",
-            "message": "with cause:",
-            "translation": "; razlog:"
+            "id": "{Msg}. The cause of the error is: {Error}.",
+            "message": "{Msg}. The cause of the error is: {Error}.",
+            "translation": "{Msg}. Vzrok napake je: {Error}.",
+            "placeholders": [
+                {
+                    "id": "Msg",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "msg"
+                },
+                {
+                    "id": "Error",
+                    "string": "%[2]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 2,
+                    "expr": "e.wrapped.Error()"
+                }
+            ]
         },
         {
             "id": "An internal error occurred",

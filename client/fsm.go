@@ -92,7 +92,6 @@ func GetStateName(s FSMStateID) string {
 func newFSM(
 	callback func(FSMStateID, FSMStateID, interface{}) bool,
 	directory string,
-	debug bool,
 ) fsm.FSM {
 	states := FSMStates{
 		StateDeregistered: FSMState{
@@ -163,13 +162,14 @@ func newFSM(
 		},
 		StateDisconnected: FSMState{
 			Transitions: []FSMTransition{
-				{To: StateGettingConfig, Description: "Connect again"},
+				{To: StateConnecting, Description: "Connect with existing config"},
+				{To: StateGettingConfig, Description: "Connect with a new config"},
 				{To: StateOAuthStarted, Description: "Renew"},
 			},
 		},
 	}
 	returnedFSM := fsm.FSM{}
-	returnedFSM.Init(StateMain, states, callback, directory, GetStateName, debug)
+	returnedFSM.Init(StateMain, states, callback, directory, GetStateName)
 	return returnedFSM
 }
 
