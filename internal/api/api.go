@@ -44,7 +44,7 @@ type ServerData struct {
 	// BaseAuthWK is the base well-known endpoint for authorization. This is only different in case of secure internet
 	BaseAuthWK string
 	// ProcessAuth processes the OAuth authorization
-	ProcessAuth func(string) string
+	ProcessAuth func(context.Context, string) (string, error)
 	// DisableAuthorize indicates whether or not new authorization requests should be disabled
 	DisableAuthorize bool
 	// Transport is the HTTP transport, only used for testing currently
@@ -82,6 +82,7 @@ func NewAPI(ctx context.Context, clientID string, sd ServerData, cb Callbacks, t
 			cb.TokensUpdated(sd.ID, sd.Type, tok)
 		},
 		Transport: sd.Transport,
+		UserAgent: httpw.UserAgent,
 	}
 
 	if tokens != nil {
@@ -134,7 +135,10 @@ func (a *API) authorize(ctx context.Context) (err error) {
 		return err
 	}
 	if a.Data.ProcessAuth != nil {
-		url = a.Data.ProcessAuth(url)
+		url, err = a.Data.ProcessAuth(ctx, url)
+		if err != nil {
+			return err
+		}
 	}
 	// We expect an uri if custom redirect is non empty
 	uri, err := a.cb.TriggerAuth(ctx, url, a.oauth.CustomRedirect != "")

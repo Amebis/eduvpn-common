@@ -29,12 +29,21 @@ func (s *Servers) AddSecure(ctx context.Context, disco *discovery.Discovery, org
 	}
 
 	sd := api.ServerData{
-		ID:         orgID,
+		ID:         dorg.OrgID,
 		Type:       server.TypeSecureInternet,
 		BaseWK:     dsrv.BaseURL,
 		BaseAuthWK: dsrv.BaseURL,
-		ProcessAuth: func(url string) string {
-			return util.ReplaceWAYF(dsrv.AuthenticationURLTemplate, url, dorg.OrgID)
+		ProcessAuth: func(ctx context.Context, url string) (string, error) {
+			// the only thing we can do is log warn
+			// this is already done in the functions
+			disco.Servers(ctx) //nolint:errcheck
+			disco.Organizations(ctx) //nolint:errcheck
+			updorg, updsrv, err := disco.SecureHomeArgs(orgID)
+			if err != nil {
+				return "", err
+			}
+			ret := util.ReplaceWAYF(updsrv.AuthenticationURLTemplate, url, updorg.OrgID)
+			return ret, nil
 		},
 	}
 
@@ -96,8 +105,19 @@ func (s *Servers) GetSecure(ctx context.Context, orgID string, disco *discovery.
 		Type:       server.TypeSecureInternet,
 		BaseWK:     dloc.BaseURL,
 		BaseAuthWK: dhome.BaseURL,
-		ProcessAuth: func(url string) string {
-			return util.ReplaceWAYF(dhome.AuthenticationURLTemplate, url, dorg.OrgID)
+		ProcessAuth: func(ctx context.Context, url string) (string, error) {
+			// the only thing we can do is log warn
+			// this is already done in the functions
+			disco.MarkServersExpired()
+			disco.Servers(ctx) //nolint:errcheck
+			disco.MarkOrganizationsExpired()
+			disco.Organizations(ctx) //nolint:errcheck
+			updorg, updsrv, err := disco.SecureHomeArgs(orgID)
+			if err != nil {
+				return "", err
+			}
+			ret := util.ReplaceWAYF(updsrv.AuthenticationURLTemplate, url, updorg.OrgID)
+			return ret, nil
 		},
 		DisableAuthorize: disableAuth,
 	}
