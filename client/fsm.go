@@ -91,7 +91,6 @@ func GetStateName(s FSMStateID) string {
 
 func newFSM(
 	callback func(FSMStateID, FSMStateID, interface{}) bool,
-	directory string,
 ) fsm.FSM {
 	states := FSMStates{
 		StateDeregistered: FSMState{
@@ -116,6 +115,7 @@ func newFSM(
 			Transitions: []FSMTransition{
 				{To: StateMain, Description: "Authorized"},
 				{To: StateDisconnected, Description: "Cancel, was disconnected"},
+				{To: StateGotConfig, Description: "Cancel, was got config"},
 			},
 		},
 		StateGettingConfig: FSMState{
@@ -141,6 +141,7 @@ func newFSM(
 			Transitions: []FSMTransition{
 				{To: StateGettingConfig, Description: "Get a VPN config again"},
 				{To: StateConnecting, Description: "VPN is connecting"},
+				{To: StateOAuthStarted, Description: "Renew"},
 			},
 		},
 		StateConnecting: FSMState{
@@ -168,9 +169,8 @@ func newFSM(
 			},
 		},
 	}
-	returnedFSM := fsm.FSM{}
-	returnedFSM.Init(StateMain, states, callback, directory, GetStateName)
-	return returnedFSM
+
+	return fsm.NewFSM(StateMain, states, callback, GetStateName)
 }
 
 // SetState sets the state for the client FSM to `state`

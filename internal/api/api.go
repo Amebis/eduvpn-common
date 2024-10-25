@@ -64,6 +64,12 @@ type API struct {
 func NewAPI(ctx context.Context, clientID string, sd ServerData, cb Callbacks, tokens *eduoauth.Token) (*API, error) {
 	cr := customRedirect(clientID)
 	// Construct OAuth
+
+	transp := sd.Transport
+	// in the tests this can be non-nil
+	if transp == nil {
+		transp = httpw.TLS13Transport()
+	}
 	o := eduoauth.OAuth{
 		ClientID: clientID,
 		EndpointFunc: func(ctx context.Context) (*eduoauth.EndpointResponse, error) {
@@ -81,7 +87,7 @@ func NewAPI(ctx context.Context, clientID string, sd ServerData, cb Callbacks, t
 		TokensUpdated: func(tok eduoauth.Token) {
 			cb.TokensUpdated(sd.ID, sd.Type, tok)
 		},
-		Transport: sd.Transport,
+		Transport: transp,
 		UserAgent: httpw.UserAgent,
 	}
 
@@ -301,6 +307,9 @@ func (a *API) Connect(ctx context.Context, prof profiles.Profile, protos []proto
 
 	// Parse expiry
 	expH := h.Get("expires")
+	if expH == "" {
+		return nil, errors.New("the server did not give an expires header")
+	}
 	expT, err := http.ParseTime(expH)
 	if err != nil {
 		return nil, fmt.Errorf("failed parsing expiry time: %w", err)
