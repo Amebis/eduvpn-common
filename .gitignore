@@ -5,7 +5,7 @@
 
 # locales
 /client/locales/*/out.gotext.json
-/docs/book/
+/docs/site/
 /cmd/cli/configs/
 /ci/docker/selfsigned/
 /docker/pip/out/

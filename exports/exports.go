@@ -1137,7 +1137,7 @@ func CalculateGateway(subnet *C.char) (*C.char, *C.char) {
 	return C.CString(gw), nil
 }
 
-// CookieNew creates a new cookie and returns it.
+// CookieNew creates a new cookie and returns it. Functions that take a cookie have it as the first argument.
 //
 // This value should not be parsed or converted somehow by the client.
 // This value is simply to pass back to the Go library.
@@ -1145,8 +1145,6 @@ func CalculateGateway(subnet *C.char) (*C.char, *C.char) {
 //
 //   - Cancel a long running function
 //   - Send a reply to a state transition (ASK_PROFILE and ASK_LOCATION)
-//
-// # Functions that take a cookie have it as the first argument
 //
 // Example Input: ```CookieNew()```
 //

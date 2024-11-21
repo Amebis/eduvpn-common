@@ -1,35 +1,5 @@
 This document was automatically generated from the exports/exports.go file
 
-# Table of contents
-- [About the API](#about-the-api)
-- [Functions](#functions)
-    * [AddServer](#addserver)
-    * [CalculateGateway](#calculategateway)
-    * [Cleanup](#cleanup)
-    * [CookieCancel](#cookiecancel)
-    * [CookieDelete](#cookiedelete)
-    * [CookieNew](#cookienew)
-    * [CookieReply](#cookiereply)
-    * [CurrentServer](#currentserver)
-    * [Deregister](#deregister)
-    * [DiscoOrganizations](#discoorganizations)
-    * [DiscoServers](#discoservers)
-    * [DiscoveryStartup](#discoverystartup)
-    * [ExpiryTimes](#expirytimes)
-    * [FreeString](#freestring)
-    * [GetConfig](#getconfig)
-    * [InState](#instate)
-    * [Register](#register)
-    * [RemoveServer](#removeserver)
-    * [RenewSession](#renewsession)
-    * [ServerList](#serverlist)
-    * [SetProfileID](#setprofileid)
-    * [SetSecureLocation](#setsecurelocation)
-    * [SetState](#setstate)
-    * [SetTokenHandler](#settokenhandler)
-    * [StartFailover](#startfailover)
-    * [StartProxyguard](#startproxyguard)
-
 # About the API
 package main implements the main exported API to be used by other languages
 
@@ -57,9 +27,11 @@ the whole UI around it. The SetState and InState functions are useful for this
 # Functions
 ## AddServer
 Signature:
- ```go
+
+```go
 func AddServer(c C.uintptr_t, _type C.int, id *C.char, ot *C.longlong) *C.char
 ```
+
 AddServer adds a server to the eduvpn-common server list `c` is the cookie
 that is used for cancellation. Create a cookie first with CookieNew.
 This same cookie is also used for replying to state transitions.
@@ -114,9 +86,11 @@ Example Output:
 
 ## CalculateGateway
 Signature:
- ```go
+
+```go
 func CalculateGateway(subnet *C.char) (*C.char, *C.char)
 ```
+
 CalculateGateway calculates the gateway for a subnet, it can take IPv4 or
 IPv6 networks with CIDR notation as inputs and returns the gateway address.
 
@@ -131,9 +105,11 @@ Example Output: ```"10.10.0.1", null```
 
 ## Cleanup
 Signature:
- ```go
+
+```go
 func Cleanup(c C.uintptr_t) *C.char
 ```
+
 Cleanup sends a `/disconnect` to cleanup the connection. Additionally,
 if ProxyGuard is active it cancels the running process
 
@@ -156,9 +132,11 @@ Example Output:
 
 ## CookieCancel
 Signature:
- ```go
+
+```go
 func CookieCancel(c C.uintptr_t) *C.char
 ```
+
 CookieCancel cancels the cookie.
 
 This means that functions which take this as first argument,
@@ -173,9 +151,11 @@ Example Output: null
 
 ## CookieDelete
 Signature:
- ```go
+
+```go
 func CookieDelete(c C.uintptr_t) *C.char
 ```
+
 CookieDelete deletes the cookie by cancelling it and deleting the underlying
 cgo handle.
 
@@ -186,10 +166,13 @@ Example Output: null
 
 ## CookieNew
 Signature:
- ```go
+
+```go
 func CookieNew() C.uintptr_t
 ```
-CookieNew creates a new cookie and returns it.
+
+CookieNew creates a new cookie and returns it. Functions that take a cookie
+have it as the first argument.
 
 This value should not be parsed or converted somehow by the client. This
 value is simply to pass back to the Go library. This value has two purposes:
@@ -197,17 +180,17 @@ value is simply to pass back to the Go library. This value has two purposes:
   - Cancel a long running function
   - Send a reply to a state transition (ASK_PROFILE and ASK_LOCATION)
 
-# Functions that take a cookie have it as the first argument
-
 Example Input: ```CookieNew()```
 
 Example Output: ```5```
 
 ## CookieReply
 Signature:
- ```go
+
+```go
 func CookieReply(c C.uintptr_t, data *C.char) *C.char
 ```
+
 CookieReply replies to a state transition using the cookie.
 
   - `c` is the Cookie
@@ -219,9 +202,11 @@ Example Output: ```null```
 
 ## CurrentServer
 Signature:
- ```go
+
+```go
 func CurrentServer() (*C.char, *C.char)
 ```
+
 CurrentServer gets the current server from eduvpn-common
 
 In eduvpn-common, a server is marked as 'current' if you have gotten a VPN
@@ -275,9 +260,11 @@ Example Output:
 
 ## Deregister
 Signature:
- ```go
+
+```go
 func Deregister() *C.char
 ```
+
 Deregister cleans up the state for the client.
 
 This function SHOULD be called when the application exits such that the
@@ -301,9 +288,11 @@ Example Output:
 
 ## DiscoOrganizations
 Signature:
- ```go
+
+```go
 func DiscoOrganizations(c C.uintptr_t, search *C.char) (*C.char, *C.char)
 ```
+
 DiscoOrganizations gets the organizations from discovery, returned as
 `types/discovery/discovery.go Organizations` marshalled as JSON.
 
@@ -367,9 +356,11 @@ Example Output:
 
 ## DiscoServers
 Signature:
- ```go
+
+```go
 func DiscoServers(c C.uintptr_t, search *C.char) (*C.char, *C.char)
 ```
+
 DiscoServers gets the servers from discovery, returned as
 `types/discovery/discovery.go Servers` marshalled as JSON
 
@@ -424,9 +415,11 @@ Example Output:
 
 ## DiscoveryStartup
 Signature:
- ```go
+
+```go
 func DiscoveryStartup(refresh C.RefreshList) *C.char
 ```
+
 DiscoveryStartup does a discovery request in the background.
 
   - The `refresh` argument is a callback that is called when the refreshing
@@ -438,9 +431,11 @@ called after calling `Register`.
 
 ## ExpiryTimes
 Signature:
- ```go
+
+```go
 func ExpiryTimes() (*C.char, *C.char)
 ```
+
 ExpiryTimes gets the expiry times for the current server
 
 Expiry times are just fields that represent unix timestamps at which to
@@ -467,9 +462,11 @@ Example Output (1...4 are unix timestamps):
 
 ## FreeString
 Signature:
- ```go
+
+```go
 func FreeString(addr *C.char)
 ```
+
 FreeString frees a string that was allocated by the eduvpn-common Go
 library.
 
@@ -481,9 +478,11 @@ Example Input: ```FreeString(strPtr)```
 
 ## GetConfig
 Signature:
- ```go
+
+```go
 func GetConfig(c C.uintptr_t, _type C.int, id *C.char, pTCP C.int, startup C.int) (*C.char, *C.char)
 ```
+
 GetConfig gets a configuration for the server. It returns additional
 information in case WireGuard over Proxyguard is used (see the last example)
 
@@ -607,18 +606,72 @@ Example Output (3=WireGuard + Proxyguard):
 
 ## InState
 Signature:
- ```go
+
+```go
 func InState(fsmState C.int) (C.int, *C.char)
 ```
+
 InState checks if the FSM is in `fsmState`.
 
 Example Input: ```InState(5)```
 
 Example Output: ```1, null```
 
+## NewProxyguard
+Signature:
+
+```go
+func NewProxyguard(c C.uintptr_t, lp C.int, tcpsp C.int, peer *C.char, proxySetup C.ProxySetup) (C.uintptr_t, *C.char)
+```
+
+NewProxyguard creates the 'proxyguard' procedure in eduvpn-common.
+eduvpn-common currently also cleans up the running ProxyGuard process in
+`cleanup`. If the proxy cannot be created it returns an error.
+
+This function proxies WireGuard UDP connections over HTTP: [ProxyGuard on
+Codeberg](https://codeberg.org/eduvpn/proxyguard).
+
+These input variables can be gotten from the configuration that is retrieved
+using the `proxy` JSON key
+
+  - `c` is the cookie. Note that if you cancel/delete the cookie,
+    ProxyGuard gets cleaned up. Common automatically cleans up ProxyGuard
+    when `Cleanup` is called, but it is good to cleanup yourself too.
+  - `lp` is the `port` of the local udp ProxyGuard connection, this is what
+    is set to the WireGuard endpoint
+  - `tcpsp` is the TCP source port. Pass 0 if you do not route based on
+    source port, so far only the Linux client has to pass non-zero.
+  - `peer` is the `ip:port` of the remote server
+  - `proxySetup` is a callback which is called when the socket is setting
+    up, this can be used for configuring routing in the client. It takes
+    two arguments: the file descriptor (integer) and a JSON list of IPs the
+    client connects to
+
+Example Input: ```StartProxyGuard(myCookie, 1337, 0, "5.5.5.5:51820",
+proxySetupCB)```
+
+Example Output: ```null```
+
+## ProxyguardPeerIPs
+Signature:
+
+```go
+func ProxyguardPeerIPs(proxyH C.uintptr_t) (*C.char, *C.char)
+```
+
+
+## ProxyguardTunnel
+Signature:
+
+```go
+func ProxyguardTunnel(c C.uintptr_t, proxyH C.uintptr_t, wglisten C.int) *C.char
+```
+
+
 ## Register
 Signature:
- ```go
+
+```go
 func Register(
 	name *C.char,
 	version *C.char,
@@ -627,6 +680,7 @@ func Register(
 	debug C.int,
 ) *C.char
 ```
+
 Register creates a new client and also registers the FSM to go to the
 initial state
 
@@ -670,9 +724,11 @@ Example Output:
 
 ## RemoveServer
 Signature:
- ```go
+
+```go
 func RemoveServer(_type C.int, id *C.char) *C.char
 ```
+
 RemoveServer removes a server from the eduvpn-common server list
 
 `_type` is the type of server that needs to be added. This type is defined
@@ -700,9 +756,11 @@ Example Output:
 
 ## RenewSession
 Signature:
- ```go
+
+```go
 func RenewSession(c C.uintptr_t) *C.char
 ```
+
 RenewSession renews the session of the VPN
 
 This essentially means that the OAuth tokens are deleted. And it also
@@ -723,9 +781,11 @@ Example Output:
 
 ## ServerList
 Signature:
- ```go
+
+```go
 func ServerList() (*C.char, *C.char)
 ```
+
 ServerList gets the list of servers that are currently added
 
 This is NOT the discovery list, but the servers that have previously been
@@ -759,9 +819,11 @@ Example Output (current profile here is empty as none has been chosen yet):
 
 ## SetProfileID
 Signature:
- ```go
+
+```go
 func SetProfileID(data *C.char) *C.char
 ```
+
 SetProfileID sets the profile ID of the current serrver.
 
 This MUST only be called if the user/client wishes to manually set a profile
@@ -783,9 +845,11 @@ Example Output:
 
 ## SetSecureLocation
 Signature:
- ```go
+
+```go
 func SetSecureLocation(orgID *C.char, cc *C.char) *C.char
 ```
+
 SetSecureLocation sets the location for the secure internet server if it
 exists.
 
@@ -809,9 +873,11 @@ Example Output:
 
 ## SetState
 Signature:
- ```go
+
+```go
 func SetState(fsmState C.int) *C.char
 ```
+
 SetState sets the state of the state machine.
 
 Note: this transitions the FSM into the new state without passing any data
@@ -821,9 +887,11 @@ Example Output: ```null```
 
 ## SetTokenHandler
 Signature:
- ```go
+
+```go
 func SetTokenHandler(getter C.TokenGetter, setter C.TokenSetter) *C.char
 ```
+
 SetTokenHandler sets the token getters and token setters for OAuth.
 
 Because the data that is saved does not contain OAuth tokens for server,
@@ -856,9 +924,11 @@ Example Output: ```null```
 
 ## StartFailover
 Signature:
- ```go
+
+```go
 func StartFailover(c C.uintptr_t, gateway *C.char, mtu C.int, readRxBytes C.ReadRxBytes) (C.int, *C.char)
 ```
+
 StartFailover starts the 'failover' procedure in eduvpn-common.
 
 Failover has one primary goal: check if the VPN can reach the gateway.
@@ -882,41 +952,4 @@ Example Input: ```StartFailover(myCookie, "10.10.10.1", 1400,
 myRxBytesReader)```
 
 Example Output: ```1, null```
-
-## StartProxyguard
-Signature:
- ```go
-func StartProxyguard(c C.uintptr_t, listen *C.char, tcpsp C.int, peer *C.char, proxySetup C.ProxySetup, proxyReady C.ProxyReady) *C.char
-```
-StartProxyguard starts the 'proxyguard' procedure in eduvpn-common.
-eduvpn-common currently also cleans up the running ProxyGuard process in
-`cleanup`. If the proxy cannot be started it returns an error.
-
-This function proxies WireGuard UDP connections over HTTP: [ProxyGuard on
-Codeberg](https://codeberg.org/eduvpn/proxyguard).
-
-These input variables can be gotten from the configuration that is retrieved
-using the `proxy` JSON key
-
-  - `c` is the cookie. Note that if you cancel/delete the cookie,
-    ProxyGuard gets cleaned up. Common automatically cleans up ProxyGuard
-    when `Cleanup` is called, but it is good to cleanup yourself too.
-  - `listen` is the `ip:port` of the local udp connection, this is what is
-    set to the WireGuard endpoint
-  - `tcpsp` is the TCP source port. Pass 0 if you do not route based on
-    source port, so far only the Linux client has to pass non-zero.
-  - `peer` is the `ip:port` of the remote server
-  - `proxySetup` is a callback which is called when the socket is setting
-    up, this can be used for configuring routing in the client. It takes
-    two arguments: the file descriptor (integer) and a JSON list of IPs the
-    client connects to
-  - `proxyReady` is a callback when the proxy is ready to be used. This is
-    only called when the client is not connected yet. Use this to determine
-    when the actual wireguard connection can be started. This callback
-    returns and takes no arguments
-
-Example Input: ```StartProxyGuard(myCookie, "127.0.0.1:1337", 0,
-"5.5.5.5:51820", proxySetupCB, proxyReadyCB)```
-
-Example Output: ```null```
 

@@ -3,7 +3,7 @@ This chapter contains background information for the library. We give a general 
 
 ## EduVPN introduction
 eduVPN-common is a library for [eduVPN](https://www.eduvpn.org/), which is a VPN by [SURF](https://www.surf.nl) and a project by [GÉANT](https://geant.org/), for research institutes and universities. Each institute that uses eduVPN has its own server. To discover these servers and establish a VPN connection with them, eduVPN clients are used. eduVPN has clients for each common platform:
-- [Android](https://github.com/eduvpn/android)
+- [Android](https://codeberg.org/eduVPN/android)
 - [Linux](https://github.com/eduvpn/python-eduvpn-client)
 - [MacOS/iOS](https://github.com/eduvpn/apple)
 - [Windows](https://github.com/Amebis/eduVPN)

@@ -12,7 +12,7 @@ import (
 
 // mockedPinger is a ping sender that always returns nil for sending
 // but returns EOF for reading
-type mockedPinger struct{
+type mockedPinger struct {
 	cleanRead bool
 }
 

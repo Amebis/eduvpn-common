@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := build
-.PHONY: build fmt lint cli test clean coverage sloc
+.PHONY: build docs fmt lint cli test clean coverage sloc
 
 
 VERSION := $(shell grep -o 'const Version = "[^"]*' internal/version/version.go | cut -d '"' -f 2)
@@ -16,6 +16,9 @@ lint:
 
 cli:
 	go build -o eduvpn-common-cli ./cmd/cli
+
+docs:
+	mkdocs build -f docs/mkdocs.yml
 
 test:
 	go test -tags=cgotesting -race -v ./...

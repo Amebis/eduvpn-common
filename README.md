@@ -12,7 +12,7 @@ The only wrapper inside of this repository is Python, used for the Linux clients
 - https://codeberg.org/eduVPN/android
 
 ## Documentation
-The documentation for this library can be found at [GitHub pages](https://eduvpn.github.io/eduvpn-common).
+The documentation for this library can be found at [Codeberg pages](https://eduvpn.codeberg.page/eduvpn-common).
 
 ## Contributing
 Contributions are welcome. Helping with translations can be done on weblate:
