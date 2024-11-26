@@ -68,6 +68,18 @@ To build for release, make sure to extract the tarball, and then add `-tags=rele
 GOFLAGS="-tags=release" make
 ```
 
+To upload the releases to Codeberg, run:
+```bash
+./make_release.sh
+./upload_release.sh
+```
+
+For pre-releases:
+```bash
+./make_release.sh -p
+./upload_release.sh -p
+```
+
 ### Package formats
 
 We support the following additional package formats: RPM (Linux, Fedora) and Deb (Linux, Debian derivatives)
