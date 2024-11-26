@@ -12,7 +12,6 @@ nav:
     - 'Testing': testing.md
     - 'Building a client': building-client.md
     - 'API Docs': apidocs.md
-    - 'Examples': examples.md
 use_directory_urls: False
 plugins:
     - mermaid2
