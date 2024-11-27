@@ -16,6 +16,7 @@ The documentation for this library can be found at [Codeberg pages](https://eduv
 
 ## Contributing
 Contributions are welcome. Helping with translations can be done on weblate:
+
 <a href="https://hosted.weblate.org/engage/eduvpn-common/">
 <img src="https://hosted.weblate.org/widget/eduvpn-common/eduvpn-common/multi-auto.svg" alt="Translation status" />
 </a>
