@@ -1,4 +1,4 @@
-//go:generate go run golang.org/x/text/cmd/gotext -srclang=en update -out=zgotext.go -lang=da,de,en,es,fr,it,nl,pt,sl,ukr
+//go:generate go run golang.org/x/text/cmd/gotext -srclang=en update -out=zgotext.go -lang=cs,da,de,en,es,fr,it,nl,pt,sl,ukr
 
 // Package client implements the public interface for creating eduVPN/Let's Connect! clients
 package client
@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eduvpn/eduvpn-common/i18nerr"
-	"github.com/eduvpn/eduvpn-common/internal/api"
-	"github.com/eduvpn/eduvpn-common/internal/config"
-	"github.com/eduvpn/eduvpn-common/internal/discovery"
-	"github.com/eduvpn/eduvpn-common/internal/failover"
-	"github.com/eduvpn/eduvpn-common/internal/fsm"
-	"github.com/eduvpn/eduvpn-common/internal/http"
-	"github.com/eduvpn/eduvpn-common/internal/log"
-	"github.com/eduvpn/eduvpn-common/internal/server"
-	"github.com/eduvpn/eduvpn-common/types/cookie"
-	srvtypes "github.com/eduvpn/eduvpn-common/types/server"
+	"codeberg.org/eduVPN/eduvpn-common/i18nerr"
+	"codeberg.org/eduVPN/eduvpn-common/internal/api"
+	"codeberg.org/eduVPN/eduvpn-common/internal/config"
+	"codeberg.org/eduVPN/eduvpn-common/internal/discovery"
+	"codeberg.org/eduVPN/eduvpn-common/internal/failover"
+	"codeberg.org/eduVPN/eduvpn-common/internal/fsm"
+	"codeberg.org/eduVPN/eduvpn-common/internal/http"
+	"codeberg.org/eduVPN/eduvpn-common/internal/log"
+	"codeberg.org/eduVPN/eduvpn-common/internal/server"
+	"codeberg.org/eduVPN/eduvpn-common/types/cookie"
+	srvtypes "codeberg.org/eduVPN/eduvpn-common/types/server"
 	"github.com/jwijenbergh/eduoauth-go"
 )
 
@@ -48,9 +48,6 @@ type Client struct {
 
 	// cfg is the config
 	cfg *config.Config
-
-	// proxy is proxyguard
-	proxy Proxy
 
 	mu sync.Mutex
 
@@ -480,7 +477,7 @@ func (c *Client) GetConfig(ck *cookie.Cookie, identifier string, _type srvtypes.
 	if err != nil {
 		if startup {
 			if errors.Is(err, api.ErrAuthorizeDisabled) {
-				return nil, i18nerr.Newf("The client tried to autoconnect to the VPN server: '%s', but you need to authorizate again. Please manually connect again.", identifier)
+				return nil, i18nerr.Newf("The client tried to autoconnect to the VPN server: '%s', but you need to authorize again. Please manually connect again.", identifier)
 			}
 			return nil, i18nerr.Wrapf(err, "The client tried to autoconnect to the VPN server: '%s', but the operation failed to complete", identifier)
 		}
@@ -557,11 +554,6 @@ func (c *Client) retrieveTokens(sid string, t srvtypes.Type) (*eduoauth.Token, e
 // Cleanup cleans up the VPN connection by sending a /disconnect
 func (c *Client) Cleanup(ck *cookie.Cookie) error {
 	defer c.TrySave()
-	// cleanup proxyguard
-	cerr := c.proxy.Cancel()
-	if cerr != nil {
-		log.Logger.Debugf("ProxyGuard cancel gave an error: %v", cerr)
-	}
 	srv, err := c.Servers.CurrentServer()
 	if err != nil {
 		return i18nerr.WrapInternal(err, "The current server was not found when cleaning up the connection")

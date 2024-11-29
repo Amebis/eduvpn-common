@@ -32,11 +32,6 @@ def func_name(signature: str) -> str:
     return signature[len("func ") : idx]
 
 
-def gen_toc(title: str) -> str:
-    id = "-".join(title.lower().split(" "))
-    return f"[{title}](#{id})"
-
-
 toc = ""
 first = True
 
@@ -58,22 +53,10 @@ for sec in section:
         else:
             break
     signature, doc = "\n".join(lines[:signature_len]), "\n".join(lines[signature_len:])
-    body = f"Signature:\n ```go\n{signature}\n```\n{doc}"
+    body = f"Signature:\n\n```go\n{signature}\n```\n\n{doc}"
     gen_sections.append((func_name(signature), body))
 
-first = True
-toc = "# Table of contents\n"
-for title, body in gen_sections:
-    if first:
-        toc += f"- {gen_toc(title)}\n"
-        func_toc = gen_toc("Functions")
-        toc += f"- {func_toc}\n"
-        first = False
-        continue
-    toc += f"    * {gen_toc(title)}\n"
-
 data = "This document was automatically generated from the exports/exports.go file\n\n"
-data += f"{toc}\n"
 first = True
 for title, body in gen_sections:
     if first:
@@ -85,5 +68,5 @@ for title, body in gen_sections:
     data += f"## {title}\n"
     data += f"{body}\n"
 
-with open("docs/src/api/functiondocs.md", "w+") as f:
+with open("docs/md/apidocs.md", "w+") as f:
     f.write(data)

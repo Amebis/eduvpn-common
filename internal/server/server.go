@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/eduvpn/eduvpn-common/internal/api"
-	"github.com/eduvpn/eduvpn-common/internal/api/profiles"
-	v2 "github.com/eduvpn/eduvpn-common/internal/config/v2"
-	"github.com/eduvpn/eduvpn-common/types/protocol"
-	srvtypes "github.com/eduvpn/eduvpn-common/types/server"
+	"codeberg.org/eduVPN/eduvpn-common/internal/api"
+	"codeberg.org/eduVPN/eduvpn-common/internal/api/profiles"
+	v2 "codeberg.org/eduVPN/eduvpn-common/internal/config/v2"
+	"codeberg.org/eduVPN/eduvpn-common/types/protocol"
+	srvtypes "codeberg.org/eduVPN/eduvpn-common/types/server"
 )
 
 // Server is the struct for a single server
@@ -142,7 +142,7 @@ func (s *Server) connect(ctx context.Context, pTCP bool) (*srvtypes.Configuratio
 	if apicfg.Proxy != nil {
 		proxy = &srvtypes.Proxy{
 			SourcePort: apicfg.Proxy.SourcePort,
-			Listen:     apicfg.Proxy.Listen,
+			ListenPort: apicfg.Proxy.ListenPort,
 			Peer:       apicfg.Proxy.Peer,
 		}
 	}

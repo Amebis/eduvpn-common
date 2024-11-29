@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	httpw "github.com/eduvpn/eduvpn-common/internal/http"
+	httpw "codeberg.org/eduVPN/eduvpn-common/internal/http"
 )
 
 // Server wraps a HTTP test server
@@ -60,6 +60,9 @@ func NewServerWithHandles(hps []HandlerPath, listener net.Listener) *Server {
 	mux := http.NewServeMux()
 	for _, hp := range hps {
 		hp := hp
+		if hp.ResponseCode == 0 {
+			hp.ResponseCode = 200
+		}
 		mux.HandleFunc(hp.Path, hp.HandlerFunc())
 	}
 	return NewServer(mux, listener)

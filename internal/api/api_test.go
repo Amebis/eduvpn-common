@@ -14,12 +14,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eduvpn/eduvpn-common/internal/api/profiles"
-	httpw "github.com/eduvpn/eduvpn-common/internal/http"
-	"github.com/eduvpn/eduvpn-common/internal/test"
-	"github.com/eduvpn/eduvpn-common/internal/wireguard"
-	"github.com/eduvpn/eduvpn-common/types/protocol"
-	"github.com/eduvpn/eduvpn-common/types/server"
+	"codeberg.org/eduVPN/eduvpn-common/internal/api/profiles"
+	httpw "codeberg.org/eduVPN/eduvpn-common/internal/http"
+	"codeberg.org/eduVPN/eduvpn-common/internal/test"
+	"codeberg.org/eduVPN/eduvpn-common/internal/wireguard"
+	"codeberg.org/eduVPN/eduvpn-common/types/protocol"
+	"codeberg.org/eduVPN/eduvpn-common/types/server"
 	"github.com/jwijenbergh/eduoauth-go"
 )
 
@@ -177,7 +177,6 @@ func createTestAPI(t *testing.T, tok *eduoauth.Token, gt []string, hps []test.Ha
   "v": "0.0.0"
 }					
 `, listen.Addr().String()),
-			ResponseCode: 200,
 		},
 		{
 			Path:            "/test-token-endpoint",
@@ -200,7 +199,7 @@ func createTestAPI(t *testing.T, tok *eduoauth.Token, gt []string, hps []test.Ha
 			return in, nil
 		},
 		DisableAuthorize: false,
-		Transport:        servc.Client.Transport,
+		transport:        servc.Client.Transport,
 	}
 
 	tc := &TestCallback{t: t}
@@ -284,7 +283,6 @@ func TestAPIInfo(t *testing.T) {
     }
 }
 `,
-				ResponseCode: 200,
 			},
 			info: &profiles.Info{
 				Info: profiles.ListInfo{
@@ -318,7 +316,6 @@ func TestAPIInfo(t *testing.T) {
     }
 }
 `,
-				ResponseCode: 200,
 			},
 			info: &profiles.Info{
 				Info: profiles.ListInfo{
@@ -386,20 +383,18 @@ func TestAPIConnect(t *testing.T) {
 	}{
 		{
 			hp: test.HandlerPath{
-				Method:       http.MethodPost,
-				Path:         "/test-api-endpoint/connect",
-				Response:     ``,
-				ResponseCode: 200,
+				Method:   http.MethodPost,
+				Path:     "/test-api-endpoint/connect",
+				Response: ``,
 			},
 			cd:  nil,
 			err: ErrNoProtocols,
 		},
 		{
 			hp: test.HandlerPath{
-				Method:       http.MethodPost,
-				Path:         "/test-api-endpoint/connect",
-				Response:     ``,
-				ResponseCode: 200,
+				Method:   http.MethodPost,
+				Path:     "/test-api-endpoint/connect",
+				Response: ``,
 			},
 			cd:     nil,
 			protos: []protocol.Protocol{protocol.Unknown},
@@ -407,10 +402,9 @@ func TestAPIConnect(t *testing.T) {
 		},
 		{
 			hp: test.HandlerPath{
-				Method:       http.MethodPost,
-				Path:         "/test-api-endpoint/connect",
-				Response:     ``,
-				ResponseCode: 200,
+				Method:   http.MethodPost,
+				Path:     "/test-api-endpoint/connect",
+				Response: ``,
 			},
 			cd:     nil,
 			protos: []protocol.Protocol{protocol.OpenVPN, protocol.WireGuard, protocol.Unknown},
@@ -503,8 +497,8 @@ PrivateKey = .*`,
 				if gcd.Proxy.SourcePort <= 0 {
 					t.Fatalf("got proxy source port is smaller or equal to 0: %v", gcd.Proxy.SourcePort)
 				}
-				if !strings.Contains(gcd.Proxy.Listen, "127.0.0.1") {
-					t.Fatalf("proxy listen does not contain 127.0.0.1: %s", gcd.Proxy.Listen)
+				if gcd.Proxy.ListenPort <= 0 {
+					t.Fatalf("proxy listen port is smaller or equal to 0: %v", gcd.Proxy.ListenPort)
 				}
 				c.cd.Proxy = gcd.Proxy
 			}

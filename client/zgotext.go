@@ -27,6 +27,7 @@ func (d *dictionary) Lookup(key string) (data string, ok bool) {
 
 func init() {
 	dict := map[string]catalog.Dictionary{
+		"cs": &dictionary{index: csIndex, data: csData},
 		"da": &dictionary{index: daIndex, data: daData},
 		"de": &dictionary{index: deIndex, data: deData},
 		"en": &dictionary{index: enIndex, data: enData},
@@ -57,10 +58,19 @@ var messageKeyToIndex = map[string]int{
 	"Failed to obtain the list of organizations":                                                    8,
 	"Failed to obtain the list of servers":                                                          9,
 	"The client tried to autoconnect to the VPN server: '%s', but the operation failed to complete": 5,
-	"The client tried to autoconnect to the VPN server: '%s', but you need to authorizate again. Please manually connect again.": 4,
+	"The client tried to autoconnect to the VPN server: '%s', but you need to authorize again. Please manually connect again.": 4,
 	"The input: '%s' is not a valid URL":   3,
 	"Timeout reached contacting URL: '%s'": 10,
 }
+
+var csIndex = []uint32{ // 14 elements
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000,
+} // Size: 80 bytes
+
+const csData string = ""
 
 var daIndex = []uint32{ // 14 elements
 	0x00000000, 0x00000046, 0x0000009b, 0x000000ce,
@@ -106,23 +116,23 @@ const deData string = "" + // Size: 895 bytes
 
 var enIndex = []uint32{ // 14 elements
 	0x00000000, 0x0000003b, 0x00000080, 0x000000a9,
-	0x000000cf, 0x0000014d, 0x000001ae, 0x000001d3,
-	0x0000020c, 0x00000237, 0x0000025c, 0x00000284,
-	0x000002ad, 0x000002c8,
+	0x000000cf, 0x0000014b, 0x000001ac, 0x000001d1,
+	0x0000020a, 0x00000235, 0x0000025a, 0x00000282,
+	0x000002ab, 0x000002c6,
 } // Size: 80 bytes
 
-const enData string = "" + // Size: 712 bytes
+const enData string = "" + // Size: 710 bytes
 	"\x02Failed to add an institute access server with URL: '%[1]s'\x02Failed" +
 	" to add a secure internet server with organisation ID: '%[1]s'\x02Failed" +
 	" to add a server with URL: '%[1]s'\x02The input: '%[1]s' is not a valid " +
 	"URL\x02The client tried to autoconnect to the VPN server: '%[1]s', but y" +
-	"ou need to authorizate again. Please manually connect again.\x02The clie" +
-	"nt tried to autoconnect to the VPN server: '%[1]s', but the operation fa" +
-	"iled to complete\x02Failed to connect to server: '%[1]s'\x02Failed to ob" +
-	"tain a VPN configuration for server: '%[1]s'\x02Failed to obtain the lis" +
-	"t of organizations\x02Failed to obtain the list of servers\x02Timeout re" +
-	"ached contacting URL: '%[1]s'\x02%[1]s. The cause of the error is: %[2]s" +
-	".\x02An internal error occurred"
+	"ou need to authorize again. Please manually connect again.\x02The client" +
+	" tried to autoconnect to the VPN server: '%[1]s', but the operation fail" +
+	"ed to complete\x02Failed to connect to server: '%[1]s'\x02Failed to obta" +
+	"in a VPN configuration for server: '%[1]s'\x02Failed to obtain the list " +
+	"of organizations\x02Failed to obtain the list of servers\x02Timeout reac" +
+	"hed contacting URL: '%[1]s'\x02%[1]s. The cause of the error is: %[2]s." +
+	"\x02An internal error occurred"
 
 var esIndex = []uint32{ // 14 elements
 	0x00000000, 0x00000054, 0x000000a7, 0x000000d7,
@@ -238,4 +248,4 @@ var ukIndex = []uint32{ // 14 elements
 
 const ukData string = ""
 
-// Total table size 6530 bytes (6KiB); checksum: 1F4972CA
+// Total table size 6608 bytes (6KiB); checksum: A1187CA2

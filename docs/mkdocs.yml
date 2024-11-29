@@ -1,0 +1,25 @@
+site_name: Documentation
+site_description: eduVPN for Linux
+docs_dir: md
+site_dir: site
+theme:
+    name: null
+    custom_dir: eduvpn_theme
+    navigation_depth: 3
+nav:
+    - 'About': index.md
+    - 'Building': building.md
+    - 'Testing': testing.md
+    - 'Building a client': building-client.md
+    - 'API Docs': apidocs.md
+use_directory_urls: False
+plugins:
+    - mermaid2
+markdown_extensions:
+    - markdown_include.include:
+    - smarty
+    - sane_lists
+    - toc:
+       permalink: "#"
+       baselevel: 1
+       toc_depth: 2-3

@@ -1,0 +1,955 @@
+This document was automatically generated from the exports/exports.go file
+
+# About the API
+package main implements the main exported API to be used by other languages
+
+Some notes:
+
+- Errors are returned as JSON c strings. The JSON type is defined in
+`types/error/error.go Error`. Free them using `FreeString`. Same is the case for
+other string types, you should also free them. The errors are always localized
+
+- Types are converted from the Go representation to C using JSON strings
+
+- Cookies are used for cancellation, just fancy contexts. Create a cookie using
+`CookieNew`, pass it to the function that needs one as the first argument. To
+cancel the function, call `CookieCancel`, passing in the same cookie as argument
+
+- Cookies must also be freed, by using the CookieDelete function if the cookie
+is no longer needed
+
+- The state machine is used to track the state of a client. It is mainly used
+for asking for certain data from the client, e.g. asking for profiles and
+locations. But a client may also wish to build upon this state machine to build
+the whole UI around it. The SetState and InState functions are useful for this
+
+
+# Functions
+## AddServer
+Signature:
+
+```go
+func AddServer(c C.uintptr_t, _type C.int, id *C.char, ot *C.longlong) *C.char
+```
+
+AddServer adds a server to the eduvpn-common server list `c` is the cookie
+that is used for cancellation. Create a cookie first with CookieNew.
+This same cookie is also used for replying to state transitions.
+
+`_type` is the type of server that needs to be added. This type is defined
+in `types/server/server.go Type`
+
+`id` is the identifier of the string:
+
+  - In case of secure internet: The organization ID
+  - In case of custom server: The base URL
+  - In case of institute access: The base URL
+
+`ni` stands for non-interactive. If non-zero, any state transitions will not
+be run.
+
+This `ot` flag is useful for preprovisioned servers; set this to non-null to
+non-interactively add a server. This flag represents the Unix time OAuth was
+last triggered, if the server needs to be added non-interactively but there
+is no token structure, set this to zero (integer) or the current Unix time.
+This value will be overwritten once OAuth is triggered.
+
+If the server cannot be added it returns the error as `types/error/error.go
+Error`. Note that the server is removed when an error has occured
+
+The following state callbacks are mandatory to handle:
+
+  - OAUTH_STARTED: This indicates that the OAuth procedure has been started,
+    it returns the URL as the data. The client should open the webbrowser
+    with this URL and continue the authorization process. Note: For mobile
+    platforms this returns a Cookie and data (json: `{"cookie": x, "data":
+    url}`). This `url` should also be opened in the browser like desktop
+    platforms. But these platforms also need to reply to the library to give
+    back the full authorization code URI with `CookieReply(x, uri)`. E.g.
+    `CookieReply(x, "/callback?code=...&state=...&iss=...")` this is the
+    path of the request that the apps get back when the user clicks approve.
+    For this, apps need to register an app url or sorts. For the valid
+    values for app URLs, see the redirect URIs for mobile platforms here
+    https://git.sr.ht/~fkooman/vpn-user-portal/tree/v3/item/src/OAuth/VpnClientDb.php
+
+Example Input (3=custom server): ```AddServer(mycookie, 3,
+"https://demo.eduvpn.nl", 0)```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "failed to add server"
+      },
+      "misc": false
+    }
+
+## CalculateGateway
+Signature:
+
+```go
+func CalculateGateway(subnet *C.char) (*C.char, *C.char)
+```
+
+CalculateGateway calculates the gateway for a subnet, it can take IPv4 or
+IPv6 networks with CIDR notation as inputs and returns the gateway address.
+
+This is useful to pass to `StartFailover`.
+It returns an error if it fails to calculate a gateway.
+The function is implemented according to: [the eduVPN
+docs](https://docs.eduvpn.org/server/v3/client-implementation-notes.html#fail-over).
+
+Example Input: ```CalculateGateway("10.10.0.5/24")```
+
+Example Output: ```"10.10.0.1", null```
+
+## Cleanup
+Signature:
+
+```go
+func Cleanup(c C.uintptr_t) *C.char
+```
+
+Cleanup sends a `/disconnect` to cleanup the connection. Additionally,
+if ProxyGuard is active it cancels the running process
+
+This MUST be called when disconnecting, see [the eduVPN
+docs](https://docs.eduvpn.org/server/v3/api.html#application-flow). `c` is
+the Cookie that needs to be passed. Create a new Cookie using `CookieNew`.
+
+If it was unsuccessful, it returns an error.
+
+Example Input: ```Cleanup(myCookie)```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "cleanup was not successful"
+      },
+      "misc": false
+    }
+
+## CookieCancel
+Signature:
+
+```go
+func CookieCancel(c C.uintptr_t) *C.char
+```
+
+CookieCancel cancels the cookie.
+
+This means that functions which take this as first argument,
+return if they're still running. The error cause is always
+`context.Canceled` for that cancelled function: [see the Go
+docs](https://pkg.go.dev/context#pkg-variables).
+
+This CookieCancel function can also return an error if cancelling was
+unsuccessful. Example Input: ```CookieCancel(myCookie)```
+
+Example Output: null
+
+## CookieDelete
+Signature:
+
+```go
+func CookieDelete(c C.uintptr_t) *C.char
+```
+
+CookieDelete deletes the cookie by cancelling it and deleting the underlying
+cgo handle.
+
+This function MUST be called when the cookie that is created using
+`CookieNew` is no longer needed. Example Input: ```CookieDelete(myCookie)```
+
+Example Output: null
+
+## CookieNew
+Signature:
+
+```go
+func CookieNew() C.uintptr_t
+```
+
+CookieNew creates a new cookie and returns it. Functions that take a cookie
+have it as the first argument.
+
+This value should not be parsed or converted somehow by the client. This
+value is simply to pass back to the Go library. This value has two purposes:
+
+  - Cancel a long running function
+  - Send a reply to a state transition (ASK_PROFILE and ASK_LOCATION)
+
+Example Input: ```CookieNew()```
+
+Example Output: ```5```
+
+## CookieReply
+Signature:
+
+```go
+func CookieReply(c C.uintptr_t, data *C.char) *C.char
+```
+
+CookieReply replies to a state transition using the cookie.
+
+  - `c` is the Cookie
+  - `data` is the data to send, e.g. a profile ID
+
+Example Input: ```CookieReply(myCookie, "split-tunnel-profile")```
+
+Example Output: ```null```
+
+## CurrentServer
+Signature:
+
+```go
+func CurrentServer() (*C.char, *C.char)
+```
+
+CurrentServer gets the current server from eduvpn-common
+
+In eduvpn-common, a server is marked as 'current' if you have gotten a VPN
+configuration for it
+
+It returns the server as JSON, defined in `types/server/server.go Current`.
+
+If there is no current server or some other, e.g. there is no current state,
+an error is returned with a nil string.
+
+Example Input: ```CurrentServer()```
+
+Example Output:
+
+    {
+      "institute_access_server": {
+        "display_name": {
+          "en": "Demo"
+        },
+        "identifier": "https://demo.eduvpn.nl/",
+        "profiles": {
+          "map": {
+            "internet": {
+              "display_name": {
+                "en": "Internet"
+              },
+              "supported_protocols": [
+                1,
+                2
+              ]
+            },
+            "internet-split": {
+              "display_name": {
+                "en": "No rfc1918 routes"
+              },
+              "supported_protocols": [
+                1,
+                2
+              ]
+            }
+          },
+          "current": "internet"
+        },
+        "support_contacts": [
+          "mailto:eduvpn@surf.nl"
+        ],
+        "delisted": false
+      },
+      "server_type": 1
+    }, null
+
+## Deregister
+Signature:
+
+```go
+func Deregister() *C.char
+```
+
+Deregister cleans up the state for the client.
+
+This function SHOULD be called when the application exits such that the
+configuration file is saved correctly. Note that saving of the configuration
+file also happens in other cases, such as after getting a VPN configuration.
+Thus it is often not problematic if this function cannot be called due to a
+client crash.
+
+If no client is available or deregistering fails, it returns an error.
+
+Example Input: ```Deregister()```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "failed to deregister"
+      },
+      "misc": false
+    }
+
+## DiscoOrganizations
+Signature:
+
+```go
+func DiscoOrganizations(c C.uintptr_t, search *C.char) (*C.char, *C.char)
+```
+
+DiscoOrganizations gets the organizations from discovery, returned as
+`types/discovery/discovery.go Organizations` marshalled as JSON.
+
+  - `c` is the Cookie that needs to be passed. Create a new Cookie using
+    `CookieNew`
+  - `search` is the search string for filtering the list.
+
+If any of the words in the `search` query is not contained in
+any of the display names or keywords, the candidate is filtered.
+Otherwise they are ranked based on the levenshtein distance: [Levenshtein
+Wikipedia](https://en.wikipedia.org/wiki/Levenshtein_distance). If `search`
+is empty it returns ALL organizations currently known in common
+
+If it was unsuccessful, it returns an error. Note that when the lib was
+built in release mode the data is almost always non-nil, even when an error
+has occurred This means it has just returned the cached list, the error
+should then not be handled in a fatal way. E.g. show the returned cache list
+but log the error or show the error with a warning.
+
+Example Input: ```DiscoOrganizations(myCookie, "")```
+
+Example Output:
+
+    {
+     "organization_list": [
+       {
+         "display_name": {
+           "en": "Academic Network of Albania - RASH"
+         },
+         "org_id": "https://idp.rash.al/simplesaml/saml2/idp/metadata.php",
+       },
+       {
+         "display_name": {
+           "da": "Dansk Sprognævn",
+           "en": "Danish Language Council"
+         },
+         "org_id": "http://idp.dsn.dk/adfs/services/trust",
+       },
+       {
+         "display_name": {
+           "da": "Erhvervsakademi Aarhus",
+           "en": "Business Academy Aarhus"
+         },
+         "org_id": "http://adfs.eaaa.dk/adfs/services/trust",
+    }, null
+
+Example Input: ```DiscoOrganizations(myCookie, "rash")```
+
+Example Output:
+
+    	{
+    	 "organization_list": [
+    	   {
+    	     "display_name": {
+    	       "en": "Academic Network of Albania - RASH"
+    	     },
+    	     "org_id": "https://idp.rash.al/simplesaml/saml2/idp/metadata.php",
+    	   },
+          ]
+    	}, null
+
+## DiscoServers
+Signature:
+
+```go
+func DiscoServers(c C.uintptr_t, search *C.char) (*C.char, *C.char)
+```
+
+DiscoServers gets the servers from discovery, returned as
+`types/discovery/discovery.go Servers` marshalled as JSON
+
+  - `c` is the Cookie that needs to be passed. Create a new Cookie using
+    `CookieNew`
+  - `search` is the search string for filtering the list.
+
+If any of the words in the search query is not contained in any of
+the display names or keywords, the candidate is filtered. Otherwise
+they are ranked based on the levenshtein distance: [Levenshtein
+Wikipedia](https://en.wikipedia.org/wiki/Levenshtein_distance). If `search`
+is empty it returns ALL servers currently known in common
+
+If it was unsuccessful, it returns an error. Note that when the lib was
+built in release mode the data is almost always non-nil, even when an error
+has occurred. This means it has just returned the cached list, the error
+should then not be handled in a fatal way. E.g. show the returned cache list
+but log the error or show the error with a warning.
+
+Example Input: ```DiscoServers(myCookie, "")```
+
+Example Output:
+
+    	{
+    	 "server_list": [
+    	   {
+    	     "base_url": "https://eduvpn.rash.al/",
+              "country_code": "AL",
+    	     "server_type": "secure_internet",
+    	   },
+    	   {
+    	     "base_url": "https://eduvpn.deic.dk/",
+              "country_code": "DK",
+    	     "server_type": "secure_internet",
+    	} , null
+
+Example Input: ```DiscoServers(myCookie, "heanet")```
+
+Example Output:
+
+    	{
+    	 "server_list": [
+             {
+               "base_url": "https://eduvpn.heanet.ie/",
+               "display_name": {
+                 "en": "HEAnet Staff"
+                },
+               "server_type": "institute_access",
+             },
+           ]
+    	} , null
+
+## DiscoveryStartup
+Signature:
+
+```go
+func DiscoveryStartup(refresh C.RefreshList) *C.char
+```
+
+DiscoveryStartup does a discovery request in the background.
+
+  - The `refresh` argument is a callback that is called when the refreshing
+    is done.
+
+When this callback is thus called, the app SHOULD refresh the server list
+of the already configured servers. This DiscoveryStartup function MUST be
+called after calling `Register`.
+
+## ExpiryTimes
+Signature:
+
+```go
+func ExpiryTimes() (*C.char, *C.char)
+```
+
+ExpiryTimes gets the expiry times for the current server
+
+Expiry times are just fields that represent unix timestamps at which to
+do certain events regarding expiry, e.g. when to show the renew button,
+when to show expiry notifications
+
+The expiry times structure is defined in `types/server/server.go Expiry` If
+some error occurs, it is returned as `types/error/error.go Error`
+
+Example Input: ```ExpiryTimes()```
+
+Example Output (1...4 are unix timestamps):
+
+    {
+         "start_time": 1,
+         "end_time": 2,
+         "button_time": 3,
+         "countdown_time": 4,
+         "notification_times": [
+             1,
+             2,
+         ],
+    }, null
+
+## FreeString
+Signature:
+
+```go
+func FreeString(addr *C.char)
+```
+
+FreeString frees a string that was allocated by the eduvpn-common Go
+library.
+
+This happens when we return strings, such as errors from the Go lib back to
+the client. The client MUST thus ensure that this memory is freed using this
+function. Simply pass the pointer to the string in here.
+
+Example Input: ```FreeString(strPtr)```
+
+## GetConfig
+Signature:
+
+```go
+func GetConfig(c C.uintptr_t, _type C.int, id *C.char, pTCP C.int, startup C.int) (*C.char, *C.char)
+```
+
+GetConfig gets a configuration for the server. It returns additional
+information in case WireGuard over Proxyguard is used (see the last example)
+
+`c` is the cookie that is used for cancellation. Create a cookie first with
+CookieNew, this same cookie is also used for replying to state transitions
+
+`_type` is the type of server that needs to be added. This type is defined
+in `types/server/server.go Type`
+
+`id` is the identifier of the string
+
+  - In case of secure internet: The organization ID
+  - In case of custom server: The base URL
+  - In case of institute access: The base URL
+
+`pTCP` is if we prefer TCP or not to get the configuration, non-zero means
+yes
+
+`startup` is if the client is just starting up, set this to true (non-zero)
+if you autoconnect to a server on startup. If this startup value is true
+(non-zero) then any authorization or other callacks (profile/location) are
+not triggered
+
+After getting a configuration, the FSM moves to the GOT_CONFIG state
+The return data is the configuration, marshalled as JSON and defined in
+`types/server/server.go Configuration`
+
+If the config cannot be retrieved it returns an error as
+`types/error/error.go Error`.
+
+The current state callbacks MUST be handled:
+
+### ASK_PROFILE
+
+This asks the client for profile.
+
+This is called when the user/client has not set a profile for this server
+before, or the current profile is invalid
+
+When the user has selected a profile, reply with the choice using the
+`CookieReply` function and the profile ID e.g. CookieReply(cookie,
+"wireguard"). CookieReply can be done in the background as the Go library
+waits for a reply
+
+The data for this transition is defined in `types/server/server.go
+RequiredAskTransition` with embedded data `Profiles` in
+`types/server/server.go`. Note that `RequiredAskTransition` contains the
+cookie to be used for the `CookieReply`.
+
+So a client would:
+
+  - Parse the data to get the cookie and data
+  - get the cookie
+  - get the profiles from the data
+  - show it in the UI and then reply with CookieReply using the choice
+
+### ASK_LOCATION
+
+This asks the client for a location. Note that under normal circumstances,
+this callback is not actually called as the home organization for the
+secure internet server is set as the current if for some reason, an invalid
+location has been configured, the library will ask the client for a new one
+
+When the user has selected a location, reply with the choice using the
+`CookieReply` function and the location ID e.g. CookieReply(cookie, "nl")
+
+CookieReply can be done in the background as the Go library waits for a
+reply The data for this transition is defined in `types/server/server.go
+RequiredAskTransition` with embedded data a list of strings (`[]string`)
+
+Note that `RequiredAskTransition` contains the cookie to be used for the
+`CookieReply` function,
+
+So a client would:
+
+  - Parse the data to get the cookie and data
+  - get the cookie
+  - get the list of locations from the data
+  - show it in the UI and then reply with CookieReply using the choice
+
+### OAUTH_STARTED
+
+  - OAUTH_STARTED: This indicates that the OAuth procedure has been started,
+    it returns the URL as the data. The client should open the webbrowser
+    with this URL and continue the authorization process. Note: For mobile
+    platforms this returns a Cookie and data (json: `{"cookie": x, "data":
+    url}`). This `url` should also be opened in the browser like desktop
+    platforms. But these platforms also need to reply to the library to give
+    back the full authorization code URI with `CookieReply(x, uri)`. E.g.
+    `CookieReply(x, "/callback?code=...&state=...&iss=...")` this is the
+    path of the request that the apps get back when the user clicks approve.
+    For this, apps need to register an app url or sorts. For the valid
+    values for app URLs, see the redirect URIs for mobile platforms here
+    https://git.sr.ht/~fkooman/vpn-user-portal/tree/v3/item/src/OAuth/VpnClientDb.php
+
+The client should open the webbrowser with this URL and continue the
+authorization process. This is only called if authorization needs to be
+retriggered
+
+Example Input (3=custom server): ```GetConfig(myCookie, 3,
+"https://demo.eduvpn.nl/", 0, 0)```
+
+Example Output (2=WireGuard):
+
+    {
+     "config": "[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...=\nAllowedIPs = 0.0.0.0/0,::/0\nEndpoint = ...",
+     "protocol": 2,
+     "default_gateway": true,
+     "should_failover": true, <- whether or not the failover procedure should happen
+    }
+
+Example Output (3=WireGuard + Proxyguard):
+
+    {
+    "config":"[Interface]\nMTU = ...\nAddress = ...\nDNS = ...\nPrivateKey = ...\n[Peer]\nPublicKey = ...\nAllowedIPs = ...\nEndpoint = 127.0.0.1:x\n",
+    "protocol":3,
+    "default_gateway":true,
+    "should_failover":true,
+    "proxy":{"source_port":38683,"listen":"127.0.0.1:59812","peer":"https://..."}
+    }
+
+## InState
+Signature:
+
+```go
+func InState(fsmState C.int) (C.int, *C.char)
+```
+
+InState checks if the FSM is in `fsmState`.
+
+Example Input: ```InState(5)```
+
+Example Output: ```1, null```
+
+## NewProxyguard
+Signature:
+
+```go
+func NewProxyguard(c C.uintptr_t, lp C.int, tcpsp C.int, peer *C.char, proxySetup C.ProxySetup) (C.uintptr_t, *C.char)
+```
+
+NewProxyguard creates the 'proxyguard' procedure in eduvpn-common.
+eduvpn-common currently also cleans up the running ProxyGuard process in
+`cleanup`. If the proxy cannot be created it returns an error.
+
+This function proxies WireGuard UDP connections over HTTP: [ProxyGuard on
+Codeberg](https://codeberg.org/eduvpn/proxyguard).
+
+These input variables can be gotten from the configuration that is retrieved
+using the `proxy` JSON key
+
+  - `c` is the cookie. Note that if you cancel/delete the cookie,
+    ProxyGuard gets cleaned up. Common automatically cleans up ProxyGuard
+    when `Cleanup` is called, but it is good to cleanup yourself too.
+  - `lp` is the `port` of the local udp ProxyGuard connection, this is what
+    is set to the WireGuard endpoint
+  - `tcpsp` is the TCP source port. Pass 0 if you do not route based on
+    source port, so far only the Linux client has to pass non-zero.
+  - `peer` is the `ip:port` of the remote server
+  - `proxySetup` is a callback which is called when the socket is setting
+    up, this can be used for configuring routing in the client. It takes
+    two arguments: the file descriptor (integer) and a JSON list of IPs the
+    client connects to
+
+Example Input: ```StartProxyGuard(myCookie, 1337, 0, "5.5.5.5:51820",
+proxySetupCB)```
+
+Example Output: ```null```
+
+## ProxyguardPeerIPs
+Signature:
+
+```go
+func ProxyguardPeerIPs(proxyH C.uintptr_t) (*C.char, *C.char)
+```
+
+
+## ProxyguardTunnel
+Signature:
+
+```go
+func ProxyguardTunnel(c C.uintptr_t, proxyH C.uintptr_t, wglisten C.int) *C.char
+```
+
+
+## Register
+Signature:
+
+```go
+func Register(
+	name *C.char,
+	version *C.char,
+	configDirectory *C.char,
+	cb C.StateCB,
+	debug C.int,
+) *C.char
+```
+
+Register creates a new client and also registers the FSM to go to the
+initial state
+
+`Name` is the name of the client, must be a valid client ID.
+
+`Version` is the version of the client. This version field is used for the
+user agent in all HTTP requests.
+
+`cb` is the state callback. It takes three arguments: The old state, the new
+state and the data for the state as JSON.
+
+  - Note that the states are defined in client/fsm.go, e.g. `Main` (in Go:
+    `StateMain`), `ASK_PROFILE` (in Go: `StateAskProfile`)
+
+  - This callback returns non-zero if the state transition is handled.
+    This is used to check if the client handles the needed transitions
+
+`debug`, if non-zero, enables debugging mode for the library, this means:
+
+  - Log everything in debug mode, so you can get more detail of what is
+    going on
+
+  - Write the state graph to a file in the configDirectory. This can be used
+    to create a FSM png file with mermaid https://mermaid.js.org/
+
+After registering, the FSM is initialized and the state transition `MAIN`
+should have been completed If some error occurs during registering, it is
+returned as a `types/error/error.go Error`
+
+Example Input: ```Register("org.eduvpn.app.linux", "0.0.1",
+"/tmp/eduvpn-common", myCallbackFunc, 1)```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "failed to register, a VPN state is already present"
+      },
+      "misc": false
+    }
+
+## RemoveServer
+Signature:
+
+```go
+func RemoveServer(_type C.int, id *C.char) *C.char
+```
+
+RemoveServer removes a server from the eduvpn-common server list
+
+`_type` is the type of server that needs to be added. This type is defined
+in `types/server/server.go Type`
+
+`id` is the identifier of the string:
+
+  - In case of secure internet: The organization ID
+  - In case of custom server: The base URL
+  - In case of institute access: The base URL
+
+If the server cannot be removed it returns the error `types/error/error.go
+Error`.
+
+Example Input (3=custom server): ```RemoveServer(3, "bogus")```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "failed to remove server"
+      },
+      "misc": false
+    }
+
+## RenewSession
+Signature:
+
+```go
+func RenewSession(c C.uintptr_t) *C.char
+```
+
+RenewSession renews the session of the VPN
+
+This essentially means that the OAuth tokens are deleted. And it also
+possibly re-runs every state callback you need when getting a config.
+So least you MUST handle the OAuth started transition
+
+It returns an error if unsuccessful. Example Input:
+```RenewSession(myCookie)```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "could not renew session"
+      },
+      "misc": false
+    }
+
+## ServerList
+Signature:
+
+```go
+func ServerList() (*C.char, *C.char)
+```
+
+ServerList gets the list of servers that are currently added
+
+This is NOT the discovery list, but the servers that have previously been
+added with `AddServer`.
+
+It returns the server list as a JSON string defined in
+`types/server/server.go List`. If the server list cannot be retrieved it
+returns a nil string and an error.
+
+Example Input: ```ServerList()```
+
+Example Output (current profile here is empty as none has been chosen yet):
+
+    {
+      "institute_access_servers": [
+        {
+          "display_name": {
+            "en": "Demo"
+          },
+          "identifier": "https://demo.eduvpn.nl/",
+          "profiles": {
+            "current": ""
+          },
+          "support_contacts": [
+            "mailto:eduvpn@surf.nl"
+          ],
+          "delisted": false
+        }
+      ]
+    }, null
+
+## SetProfileID
+Signature:
+
+```go
+func SetProfileID(data *C.char) *C.char
+```
+
+SetProfileID sets the profile ID of the current serrver.
+
+This MUST only be called if the user/client wishes to manually set a profile
+instead of the common lib asking for one using a transition.
+
+  - `data` is the profile ID.
+
+It returns an error if unsuccessful. Example Input:
+```SetProfileID("splittunnel")```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "profile does not exist"
+      },
+      "misc": false
+    }
+
+## SetSecureLocation
+Signature:
+
+```go
+func SetSecureLocation(orgID *C.char, cc *C.char) *C.char
+```
+
+SetSecureLocation sets the location for the secure internet server if it
+exists.
+
+This MUST only be called if the user/client wishes to manually set a
+location instead of the common lib asking for one using a transition.
+
+  - `orgID` is the organisation ID for the secure internet server
+  - `cc` is the location ID/country code
+
+It returns an error if unsuccessful. Example Input:
+```SetSecureLocation("http://idp.geant.org/", "nl")```
+
+Example Output:
+
+    {
+      "message": {
+        "en": "location does not exist"
+      },
+      "misc": false
+    }
+
+## SetState
+Signature:
+
+```go
+func SetState(fsmState C.int) *C.char
+```
+
+SetState sets the state of the state machine.
+
+Note: this transitions the FSM into the new state without passing any data
+to it. Example Input: ```SetState(5)```
+
+Example Output: ```null```
+
+## SetTokenHandler
+Signature:
+
+```go
+func SetTokenHandler(getter C.TokenGetter, setter C.TokenSetter) *C.char
+```
+
+SetTokenHandler sets the token getters and token setters for OAuth.
+
+Because the data that is saved does not contain OAuth tokens for server,
+the common lib asks and sets the tokens using these callback functions.
+The client can thus pass callbacks to this function so that the tokens can
+be securely stored in a keyring.
+
+The client must pass two callback arguments to this function:
+
+1. `getter` is the void function that gets tokens from the client. It takes
+three arguments:
+  - The `server` for which to get the tokens for, marshalled as JSON and
+    defined in `types/server/server.go Current`
+  - The `output` buffer
+  - The `length` of the output buffer. This 'output buffer' must contain the
+    tokens, marshalled as JSON that is defined in `types/server/server.go
+    Tokens`
+
+2. `setter` is the void function that sets tokens. It takes two arguments:
+
+  - The `server` for which to get the tokens for, marshalled as JSON and
+    defined in `types/server/server.go Current`
+  - The `tokens`, defined in `types/server/server.go Tokens` marshalled as
+    JSON
+
+It returns an error when the tokens cannot be set. Example Input:
+```SetTokenHandler(getterFunc, setterFunc)```
+
+Example Output: ```null```
+
+## StartFailover
+Signature:
+
+```go
+func StartFailover(c C.uintptr_t, gateway *C.char, mtu C.int, readRxBytes C.ReadRxBytes) (C.int, *C.char)
+```
+
+StartFailover starts the 'failover' procedure in eduvpn-common.
+
+Failover has one primary goal: check if the VPN can reach the gateway.
+This can be used to check whether or not the client needs to 'failover' to
+prefer TCP (if currently using UDP). Which is useful to go from a broken
+WireGuard connection to OpenVPN over TCP.
+
+  - `c` is the cookie that is passed for cancellation. To create a cookie,
+    use the `CookieNew` function
+  - `gateway` is the gateway IP of the VPN. You MAY calculate this with the
+    `CalculateGateway` function
+  - `readRxBytes` is a function that returns the current rx bytes of the VPN
+    interface, this should return a `long long int` in c
+
+It returns a boolean whether or not the common lib has determined
+that it cannot reach the gateway. Non-zero=dropped, zero=not dropped.
+It also returns an error, if it fails to indicate if it has dropped or not.
+In this case, dropped is also set to zero.
+
+Example Input: ```StartFailover(myCookie, "10.10.10.1", 1400,
+myRxBytesReader)```
+
+Example Output: ```1, null```
+
